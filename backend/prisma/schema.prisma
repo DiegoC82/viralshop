@@ -1,0 +1,98 @@
+// backend/prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  BUYER
+  SELLER
+}
+
+enum UserStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum VideoStatus {
+  PROCESSING
+  ACTIVE
+  INACTIVE
+}
+
+enum TxStatus {
+  PENDING
+  HELD       // Dinero en escrow
+  RELEASED   // Entregado al vendedor
+  REFUNDED
+}
+
+model User {
+  id              String        @id @default(cuid())
+  email           String        @unique
+  phone           String?       @unique
+  name            String
+  avatarUrl       String?
+  role            UserRole      @default(BUYER)
+  kycStatus       UserStatus    @default(PENDING)
+  walletBalance   Float         @default(0)
+  stripeAccountId String?
+  createdAt       DateTime      @default(now())
+  videos          Video[]
+  purchases       Transaction[] @relation("Buyer")
+  affiliateLinks  AffiliateLink[]
+}
+
+model Video {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  title         String
+  muxAssetId    String?
+  muxPlaybackId String?
+  thumbnailUrl  String?
+  price         Float
+  currency      String        @default("USD")
+  status        VideoStatus   @default(PROCESSING)
+  viewCount     Int           @default(0)
+  likeCount     Int           @default(0)
+  createdAt     DateTime      @default(now())
+  transactions  Transaction[]
+  affiliateLinks AffiliateLink[]
+}
+
+model Transaction {
+  id              String        @id @default(cuid())
+  buyerId         String
+  buyer           User          @relation("Buyer", fields: [buyerId], references: [id])
+  videoId         String
+  video           Video         @relation(fields: [videoId], references: [id])
+  affiliateLinkId String?
+  affiliateLink   AffiliateLink? @relation(fields: [affiliateLinkId], references: [id])
+  amount          Float
+  platformFee     Float
+  affiliateCredit Float         @default(0)
+  status          TxStatus      @default(PENDING)
+  stripePaymentId String?
+  createdAt       DateTime      @default(now())
+  deliveredAt     DateTime?
+}
+
+model AffiliateLink {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  videoId         String
+  video           Video         @relation(fields: [videoId], references: [id])
+  code            String        @unique @default(cuid())
+  creditPercent   Float         @default(5.0) // 5% cashback
+  clickCount      Int           @default(0)
+  conversionCount Int           @default(0)
+  createdAt       DateTime      @default(now())
+  transactions    Transaction[]
+}
