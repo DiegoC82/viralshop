@@ -21,7 +21,7 @@ export default function AuthScreen({ navigation }: any) {
   const handleAuthentication = async () => {
     try {
       if (isLogin) {
-        const response = await axios.post(`${BACKEND_URL}/login`, { email, password });
+        const response = await axios.post(`${BACKEND_URL}/auth/login`, { email, password });
         
         // ¡GUARDAMOS EL TOKEN EN EL CELULAR!
         await AsyncStorage.setItem('userToken', response.data.token); 
@@ -30,7 +30,7 @@ export default function AuthScreen({ navigation }: any) {
         navigation.navigate('Interests'); 
         
       } else {
-        const response = await axios.post(`${BACKEND_URL}/register`, { name, username, email, password });
+        const response = await axios.post(`${BACKEND_URL}/auth/register`, { name, username, email, password });
         
         // ¡TAMBIÉN LO GUARDAMOS AL REGISTRARSE!
         await AsyncStorage.setItem('userToken', response.data.token);
