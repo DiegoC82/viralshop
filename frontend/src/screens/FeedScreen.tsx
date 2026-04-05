@@ -10,7 +10,7 @@ import { COLORS } from '../theme/colors';
 const { height, width } = Dimensions.get('window');
 
 // 👇 REEMPLAZA CON TU IP REAL 👇
-const BACKEND_URL = 'http://192.168.100.107:3000/videos/feed';
+const BACKEND_URL = 'https://viralshop-xr9v.onrender.com/videos/feed';
 
 const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
   const player = useVideoPlayer(item.videoUrl, player => {

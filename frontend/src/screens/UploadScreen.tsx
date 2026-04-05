@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../theme/colors';
 
 // 👇 REEMPLAZA ESTO CON TU IP REAL 👇
-const BACKEND_URL = 'http://192.168.100.107:3000';
+const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
 export default function UploadScreen({ navigation }: any) {
   const [videoUri, setVideoUri] = useState<string | null>(null);

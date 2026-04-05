@@ -6,7 +6,7 @@ import { COLORS } from '../theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // 👇 REEMPLAZA ESTO CON LA IP DE TU COMPUTADORA 👇
-const BACKEND_URL = 'http://192.168.100.107:3000/auth'; 
+const BACKEND_URL = 'https://viralshop-xr9v.onrender.com'; 
 
 export default function AuthScreen({ navigation }: any) {
   const [isLogin, setIsLogin] = useState(true);

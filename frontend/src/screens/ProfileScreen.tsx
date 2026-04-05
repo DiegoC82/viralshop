@@ -12,7 +12,7 @@ const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3;
 
 // 👇 REEMPLAZA CON TU IP REAL 👇
-const BACKEND_URL = 'http://192.168.100.107:3000';
+const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
 export default function ProfileScreen({ navigation }: any) {
   const [profile, setProfile] = useState<any>(null);

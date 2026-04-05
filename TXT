@@ -13,6 +13,7 @@ npx expo start -c ----> reinicia el emulador.
 npx prisma studio ---> para ver la base de datos.
 
 postgresql://neondb_owner:npg_2FVSQ0WlKeRI@ep-dark-boat-acpmyv2i-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
 -------------------------
 PowerShell para obtener nuevas características y mejoras. https://aka.ms/PSWindows
