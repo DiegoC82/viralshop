@@ -1,98 +1,92 @@
-// backend/prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
+// Mantenemos los roles para el futuro E-commerce
 enum UserRole {
   BUYER
   SELLER
 }
 
-enum UserStatus {
-  PENDING
-  VERIFIED
-  REJECTED
-}
-
-enum VideoStatus {
-  PROCESSING
-  ACTIVE
-  INACTIVE
-}
-
-enum TxStatus {
-  PENDING
-  HELD       // Dinero en escrow
-  RELEASED   // Entregado al vendedor
-  REFUNDED
-}
-
 model User {
-  id              String        @id @default(cuid())
-  email           String        @unique
-  phone           String?       @unique
-  name            String
-  avatarUrl       String?
-  role            UserRole      @default(BUYER)
-  kycStatus       UserStatus    @default(PENDING)
-  walletBalance   Float         @default(0)
-  stripeAccountId String?
-  createdAt       DateTime      @default(now())
-  videos          Video[]
-  purchases       Transaction[] @relation("Buyer")
-  affiliateLinks  AffiliateLink[]
+  id          String       @id @default(cuid())
+  email       String       @unique
+  username    String       @unique
+  name        String
+  password    String       // <-- ¡Añadimos este campo!
+  avatarUrl   String?
+  bio         String?
+  role        UserRole     @default(BUYER)
+  isVerified  Boolean      @default(false) // Perfil verificado
+  createdAt   DateTime     @default(now())
+
+  // Relaciones Sociales
+  interests   Interest[]   @relation("UserInterests")
+  videos      Video[]
+  likes       Like[]
+  comments    Comment[]
+  savedVideos SavedVideo[]
+}
+
+// Para que el usuario elija qué le gusta al iniciar
+model Interest {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  users     User[]   @relation("UserInterests")
 }
 
 model Video {
-  id            String        @id @default(cuid())
-  userId        String
-  user          User          @relation(fields: [userId], references: [id])
-  title         String
-  muxAssetId    String?
-  muxPlaybackId String?
-  thumbnailUrl  String?
-  price         Float
-  currency      String        @default("USD")
-  status        VideoStatus   @default(PROCESSING)
-  viewCount     Int           @default(0)
-  likeCount     Int           @default(0)
-  createdAt     DateTime      @default(now())
-  transactions  Transaction[]
-  affiliateLinks AffiliateLink[]
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  videoUrl     String       // URL del video (después conectaremos Mux)
+  description  String?
+  viewCount    Int          @default(0)
+  createdAt    DateTime     @default(now())
+  
+  // 👇 NUEVOS CAMPOS E-COMMERCE 👇
+  productName   String?
+  productPrice  Float?
+  productLink   String?
+  
+  // Relaciones Sociales
+  likes        Like[]
+  comments     Comment[]
+  savedBy      SavedVideo[]
 }
 
-model Transaction {
-  id              String        @id @default(cuid())
-  buyerId         String
-  buyer           User          @relation("Buyer", fields: [buyerId], references: [id])
-  videoId         String
-  video           Video         @relation(fields: [videoId], references: [id])
-  affiliateLinkId String?
-  affiliateLink   AffiliateLink? @relation(fields: [affiliateLinkId], references: [id])
-  amount          Float
-  platformFee     Float
-  affiliateCredit Float         @default(0)
-  status          TxStatus      @default(PENDING)
-  stripePaymentId String?
-  createdAt       DateTime      @default(now())
-  deliveredAt     DateTime?
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, videoId]) // Un usuario solo puede dar un like por video
 }
 
-model AffiliateLink {
-  id              String        @id @default(cuid())
-  userId          String
-  user            User          @relation(fields: [userId], references: [id])
-  videoId         String
-  video           Video         @relation(fields: [videoId], references: [id])
-  code            String        @unique @default(cuid())
-  creditPercent   Float         @default(5.0) // 5% cashback
-  clickCount      Int           @default(0)
-  conversionCount Int           @default(0)
-  createdAt       DateTime      @default(now())
-  transactions    Transaction[]
+model Comment {
+  id        String   @id @default(cuid())
+  text      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model SavedVideo {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, videoId]) // Evita guardar el mismo video dos veces
 }
