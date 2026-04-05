@@ -154,7 +154,11 @@ export default function ProfileScreen({ navigation }: any) {
         keyExtractor={(item) => item.id}
         numColumns={3}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.videoThumbnailContainer}>
+          // 👇 AGREGAMOS EL onPress AQUÍ 👇
+          <TouchableOpacity 
+            style={styles.videoThumbnailContainer}
+            onPress={() => navigation.navigate('SingleVideo', { video: item })}
+          >
             <Image source={{ uri: getThumbnail(item.videoUrl) }} style={styles.videoThumbnail} />
             <View style={styles.viewCountBadge}>
               <Ionicons name="play-outline" size={14} color="#FFF" />

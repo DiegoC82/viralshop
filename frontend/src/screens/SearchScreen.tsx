@@ -8,10 +8,11 @@ import { COLORS } from '../theme/colors';
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3;
 
-// 👇 PON TU IP AQUÍ 👇
+// 👇 PON TU IP O LA DE RENDER AQUÍ 👇
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
-export default function SearchScreen() {
+// 👇 AQUÍ AGREGAMOS { navigation }: any 👇
+export default function SearchScreen({ navigation }: any) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,7 +84,11 @@ export default function SearchScreen() {
           keyExtractor={(item) => item.id}
           numColumns={3}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.videoThumbnailContainer}>
+            // 👇 AQUÍ ESTÁ EL BOTÓN CON LA NAVEGACIÓN Y LA IMAGEN RECUPERADA 👇
+            <TouchableOpacity 
+              style={styles.videoThumbnailContainer}
+              onPress={() => navigation.navigate('SingleVideo', { video: item })}
+            >
               <Image source={{ uri: getThumbnail(item.videoUrl) }} style={styles.videoThumbnail} />
               
               {/* Etiqueta pequeñita de precio si es un producto */}
