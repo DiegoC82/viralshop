@@ -1,21 +1,20 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-// Es vital importar esto para poder servir archivos estáticos:
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 
 async function bootstrap() {
-  // Le decimos a NestJS que actúe como una aplicación Express
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   
-  app.enableCors(); // Permite que el celular se conecte sin problemas
+  app.enableCors(); 
   
-  // 👇 AQUÍ ESTÁ LA LLAVE MÁGICA 👇
-  // Le decimos que abra la carpeta "uploads" al mundo exterior
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
   });
 
-  await app.listen(3000);
+  // 👇 AJUSTE PARA LA NUBE 👇
+  // Escucha el puerto de Render o el 3000 (local), y el '0.0.0.0' abre las puertas al internet
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
 }
 bootstrap();
