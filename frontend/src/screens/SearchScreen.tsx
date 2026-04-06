@@ -1,6 +1,6 @@
 // frontend/src/screens/SearchScreen.tsx
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, Image, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, FlatList, Image, TouchableOpacity, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { COLORS } from '../theme/colors';
@@ -8,16 +8,21 @@ import { COLORS } from '../theme/colors';
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3;
 
-// 👇 PON TU IP O LA DE RENDER AQUÍ 👇
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
-// 👇 AQUÍ AGREGAMOS { navigation }: any 👇
+// 👇 ESTA LISTA DEBE SER LA MISMA EN INTERESTSSCREEN 👇
+export const CATEGORIES = [
+  "Tecnología", "Gaming", "Moda", "Belleza", "Hogar", 
+  "Fitness", "Música", "Comida", "Viajes", "Arte"
+];
+
 export default function SearchScreen({ navigation }: any) {
   const [query, setQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Función que se ejecuta cada vez que el usuario escribe
+  // Función de búsqueda principal
   const handleSearch = async (text: string) => {
     setQuery(text);
     if (text.trim() === '') {
@@ -27,6 +32,7 @@ export default function SearchScreen({ navigation }: any) {
 
     setLoading(true);
     try {
+      // El backend buscará este texto en títulos, etiquetas o descripciones
       const response = await axios.get(`${BACKEND_URL}/videos/search?q=${text}`);
       setResults(response.data);
     } catch (error) {
@@ -36,7 +42,21 @@ export default function SearchScreen({ navigation }: any) {
     }
   };
 
-  // Reutilizamos tu función para obtener la portada del video de Mux
+  // Función para manejar el toque en una categoría
+  const handleCategoryPress = (category: string) => {
+    if (selectedCategory === category) {
+      // Si toca la que ya está seleccionada, la desmarcamos y limpiamos
+      setSelectedCategory(null);
+      setQuery('');
+      setResults([]);
+    } else {
+      // Si toca una nueva, la marcamos y buscamos directamente
+      setSelectedCategory(category);
+      setQuery(category); // Actualizamos el input visualmente
+      handleSearch(category);
+    }
+  };
+
   const getThumbnail = (videoUrl: string) => {
     if (videoUrl && videoUrl.includes('mux.com')) {
       const parts = videoUrl.split('/');
@@ -49,7 +69,7 @@ export default function SearchScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* BARRA DE BÚSQUEDA */}
+      {/* HEADER CON BÚSQUEDA Y CATEGORÍAS */}
       <View style={styles.header}>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={20} color={COLORS.textMuted} />
@@ -58,14 +78,45 @@ export default function SearchScreen({ navigation }: any) {
             placeholder="Buscar productos, usuarios o etiquetas..."
             placeholderTextColor={COLORS.textMuted}
             value={query}
-            onChangeText={handleSearch}
+            onChangeText={(text) => {
+              setSelectedCategory(null); // Desmarca la categoría si el usuario escribe
+              handleSearch(text);
+            }}
             autoCapitalize="none"
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={() => handleSearch('')}>
+            <TouchableOpacity onPress={() => {
+              setQuery('');
+              setSelectedCategory(null);
+              setResults([]);
+            }}>
               <Ionicons name="close-circle" size={20} color={COLORS.textMuted} />
             </TouchableOpacity>
           )}
+        </View>
+
+        {/* 👇 LISTA HORIZONTAL DE CATEGORÍAS TIPO TIKTOK 👇 */}
+        <View style={styles.categoriesWrapper}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.categoriesContainer}
+          >
+            {CATEGORIES.map((cat) => {
+              const isSelected = selectedCategory === cat;
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.categoryPill, isSelected && styles.categoryPillSelected]}
+                  onPress={() => handleCategoryPress(cat)}
+                >
+                  <Text style={[styles.categoryText, isSelected && styles.categoryTextSelected]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
       </View>
 
@@ -84,14 +135,12 @@ export default function SearchScreen({ navigation }: any) {
           keyExtractor={(item) => item.id}
           numColumns={3}
           renderItem={({ item }) => (
-            // 👇 AQUÍ ESTÁ EL BOTÓN CON LA NAVEGACIÓN Y LA IMAGEN RECUPERADA 👇
             <TouchableOpacity 
               style={styles.videoThumbnailContainer}
               onPress={() => navigation.navigate('SingleVideo', { video: item })}
             >
               <Image source={{ uri: getThumbnail(item.videoUrl) }} style={styles.videoThumbnail} />
               
-              {/* Etiqueta pequeñita de precio si es un producto */}
               {item.productPrice && (
                 <View style={styles.priceTag}>
                   <Text style={styles.priceText}>${item.productPrice}</Text>
@@ -113,9 +162,18 @@ export default function SearchScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  header: { paddingTop: 50, paddingHorizontal: 15, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#222' },
-  searchBar: { flexDirection: 'row', backgroundColor: COLORS.surface, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 12, alignItems: 'center' },
+  header: { paddingTop: 50, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#222' },
+  searchBar: { flexDirection: 'row', backgroundColor: COLORS.surface, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 12, alignItems: 'center', marginHorizontal: 15, marginBottom: 15 },
   searchInput: { flex: 1, color: COLORS.text, fontSize: 16, marginLeft: 10 },
+  
+  // Estilos de las Categorías
+  categoriesWrapper: { height: 40 },
+  categoriesContainer: { paddingHorizontal: 15, alignItems: 'center' },
+  categoryPill: { backgroundColor: COLORS.surface, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginRight: 10, borderWidth: 1, borderColor: '#333' },
+  categoryPillSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  categoryText: { color: COLORS.text, fontSize: 14, fontWeight: '500' },
+  categoryTextSelected: { color: '#FFF', fontWeight: 'bold' },
+
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   emptyText: { color: COLORS.textMuted, fontSize: 16, marginTop: 10, textAlign: 'center' },
   videoThumbnailContainer: { width: COLUMN_WIDTH, height: COLUMN_WIDTH * 1.5, borderWidth: 0.5, borderColor: '#000' },

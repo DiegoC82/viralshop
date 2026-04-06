@@ -1,7 +1,7 @@
 // frontend/src/screens/FeedScreen.tsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { StyleSheet, Text, View, FlatList, Dimensions, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Alert, Share, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useIsFocused } from '@react-navigation/native'; 
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
@@ -9,16 +9,17 @@ import { COLORS } from '../theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { height, width } = Dimensions.get('window');
-
-// 👇 Arreglamos la URL base para poder usarla en diferentes llamadas 👇
 const BASE_URL = 'https://viralshop-xr9v.onrender.com';
 
 const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
   const navigation = useNavigation<any>();
   
+  // 👇 1. NUEVO ESTADO PARA EL AUDIO: Mantenemos el volumen por defecto (muted = false) 👇
+  const [isMuted, setIsMuted] = useState(false); 
+
   const player = useVideoPlayer(item.videoUrl, player => {
     player.loop = true;
-    player.muted = false; 
+    player.muted = isMuted; // Sincronizado con el estado inicial
   });
 
   useEffect(() => {
@@ -28,11 +29,9 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
 
   const avatarUri = item.user?.avatarUrl || 'https://i.pravatar.cc/150?u=' + item.userId;
 
-  // 🌟 ESTADOS PARA LOS BOTONES Y COMENTARIOS 🌟
   const [isLiked, setIsLiked] = useState(item.isLiked || false);
   const [isSaved, setIsSaved] = useState(item.isSaved || false);
   
-  // Estados del panel de comentarios
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -54,39 +53,32 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
     actionCallback();
   };
 
-  // 👇 1. LÓGICA DE COMPARTIR (Nativo del celular) 👇
   const shareVideo = async () => {
     try {
       await Share.share({
-        message: `¡Mira este increíble video en ViralShop! 🚀 ${item.description || ''} - Descarga la app para verlo.`,
+        message: `¡Mira este increíble video en ViralShop! 🚀 ${item.description || ''}`,
       });
     } catch (error) {
       console.log("Error al compartir:", error);
     }
   };
 
-  // 👇 2. LÓGICA DE ME GUSTA (Optimista) 👇
   const toggleLike = async () => {
     const previousState = isLiked;
-    setIsLiked(!isLiked); // Cambia al instante (UI Optimista)
-    
+    setIsLiked(!isLiked); 
     try {
       const token = await AsyncStorage.getItem('userToken');
-      // Llama a tu backend (asegúrate de que esta ruta exista en NestJS)
       await axios.post(`${BASE_URL}/videos/${item.id}/like`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
     } catch (error) {
-      setIsLiked(previousState); // Si falla, lo devuelve a la normalidad
-      console.log("Error al dar like:", error);
+      setIsLiked(previousState); 
     }
   };
 
-  // 👇 3. LÓGICA DE GUARDAR (Optimista) 👇
   const toggleBookmark = async () => {
     const previousState = isSaved;
-    setIsSaved(!isSaved); // Cambia al instante
-    
+    setIsSaved(!isSaved); 
     try {
       const token = await AsyncStorage.getItem('userToken');
       await axios.post(`${BASE_URL}/videos/${item.id}/save`, {}, {
@@ -94,16 +86,13 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
       });
     } catch (error) {
       setIsSaved(previousState);
-      console.log("Error al guardar:", error);
     }
   };
 
-  // 👇 4. LÓGICA DE COMENTARIOS 👇
   const openComments = async () => {
     setShowComments(true);
     setLoadingComments(true);
     try {
-      // Trae los comentarios del video
       const response = await axios.get(`${BASE_URL}/videos/${item.id}/comments`);
       setComments(response.data || []);
     } catch (error) {
@@ -115,21 +104,25 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
 
   const postComment = async () => {
     if (newComment.trim() === '') return;
-    
     try {
       const token = await AsyncStorage.getItem('userToken');
       const response = await axios.post(`${BASE_URL}/videos/${item.id}/comments`, 
         { text: newComment },
         { headers: { Authorization: `Bearer ${token}` }}
       );
-      
-      // Agrega el comentario a la lista local para que se vea de inmediato
       setComments([response.data, ...comments]); 
-      setNewComment(''); // Limpia el input
+      setNewComment(''); 
     } catch (error) {
       Alert.alert("Error", "No se pudo enviar el comentario.");
-      console.log(error);
     }
+  };
+
+  // 👇 2. FUNCIÓN DE AUDIO (Apagar/Prender) 👇
+  const toggleMute = () => {
+    // Actualizamos la instancia del reproductor directamente
+    player.muted = !isMuted;
+    // Actualizamos el estado para cambiar el icono
+    setIsMuted(!isMuted);
   };
 
   const toggleFollow = () => {
@@ -165,7 +158,6 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
           </TouchableOpacity>
         </View>
 
-        {/* BOTONES CONECTADOS */}
         <TouchableOpacity style={styles.actionButton} onPress={() => handleProtectedAction(toggleLike)}>
           <Ionicons name={isLiked ? "heart" : "heart-outline"} size={32} color={isLiked ? "#FF2D55" : COLORS.text} />
         </TouchableOpacity>
@@ -181,13 +173,21 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
         <TouchableOpacity style={styles.actionButton} onPress={shareVideo}>
           <Ionicons name="arrow-redo" size={28} color={COLORS.text} />
         </TouchableOpacity>
+
+        {/* 👇 3. NUEVO BOTÓN DE AUDIO (Debajo de compartir, sin mover nada) 👇 */}
+        <TouchableOpacity style={styles.actionButton} onPress={toggleMute}>
+          <Ionicons 
+            // Cambia el icono dinámicamente si está silenciado o no
+            name={isMuted ? "volume-mute" : "volume-high"} 
+            size={28} 
+            color={COLORS.text} 
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* 🌟 EL PANEL DESLIZABLE DE COMENTARIOS (MODAL) 🌟 */}
       <Modal visible={showComments} animationType="slide" transparent={true} onRequestClose={() => setShowComments(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalContainer}>
           <View style={styles.bottomSheet}>
-            
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Comentarios</Text>
               <TouchableOpacity onPress={() => setShowComments(false)}>
@@ -226,7 +226,6 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
                 <Ionicons name="send" size={20} color={newComment.trim() ? COLORS.accent : COLORS.textMuted} />
               </TouchableOpacity>
             </View>
-
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -241,10 +240,13 @@ export default function FeedScreen() {
   const [videos, setVideos] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('Para ti'); 
+
+  const isFocused = useIsFocused();
+  const navigation = useNavigation<any>();
 
   const fetchVideos = async () => {
     try {
-      // Usamos BASE_URL
       const response = await axios.get(`${BASE_URL}/videos/feed`);
       setVideos(response.data);
     } catch (error) {
@@ -280,24 +282,48 @@ export default function FeedScreen() {
   }
 
   return (
-    <FlatList
-      data={videos}
-      renderItem={({ item, index }) => <FeedItem item={item} isActive={index === activeIndex} />}
-      keyExtractor={item => item.id}
-      pagingEnabled 
-      showsVerticalScrollIndicator={false}
-      snapToAlignment="start"
-      decelerationRate="fast"
-      onViewableItemsChanged={onViewableItemsChanged}
-      viewabilityConfig={viewabilityConfig}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} colors={[COLORS.accent]} />
-      }
-    />
+    <View style={styles.mainContainer}>
+      
+      <View style={styles.topNavContainer}>
+        <View style={styles.topNavTabs}>
+          <TouchableOpacity onPress={() => setActiveTab('Siguiendo')}>
+            <Text style={activeTab === 'Siguiendo' ? styles.topNavTextActive : styles.topNavTextInactive}>Siguiendo</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={() => setActiveTab('Remates')}>
+            <Text style={activeTab === 'Remates' ? styles.topNavTextActive : styles.topNavTextInactive}>Remates</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setActiveTab('Para ti')}>
+            <Text style={activeTab === 'Para ti' ? styles.topNavTextActive : styles.topNavTextInactive}>Para ti</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.topNavSearch} onPress={() => navigation.navigate('Buscar')}>
+          <Ionicons name="search" size={28} color="rgba(255,255,255,0.8)" />
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={videos}
+        renderItem={({ item, index }) => <FeedItem item={item} isActive={index === activeIndex && isFocused} />}
+        keyExtractor={item => item.id}
+        pagingEnabled 
+        showsVerticalScrollIndicator={false}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} colors={[COLORS.accent]} />
+        }
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  mainContainer: { flex: 1, backgroundColor: COLORS.background },
   videoContainer: { height: height, width: width, backgroundColor: COLORS.background },
   darkOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)' },
   infoOverlay: { position: 'absolute', bottom: 90, left: 20, right: 80 },
@@ -307,12 +333,16 @@ const styles = StyleSheet.create({
   profileContainer: { alignItems: 'center', marginBottom: 20 },
   profilePic: { width: 50, height: 50, borderRadius: 25, borderWidth: 2, borderColor: COLORS.accent },
   followButton: { position: 'absolute', bottom: -10, backgroundColor: COLORS.primary, width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  actionButton: { width: 50, height: 50, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
+  // 👇 Se mantiene el estilo original 👇
+  actionButton: { width: 50, height: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
   productTag: { flexDirection: 'row', backgroundColor: COLORS.accent, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center', marginBottom: 12, alignSelf: 'flex-start', maxWidth: '90%', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 3, elevation: 5 },
   productName: { color: '#000', fontWeight: 'bold', fontSize: 14, marginLeft: 5, marginRight: 8, flexShrink: 1 },
   productPrice: { color: '#000', fontWeight: '900', fontSize: 14, marginRight: 5 },
-  
-  // 👇 ESTILOS PARA EL PANEL DE COMENTARIOS 👇
+  topNavContainer: { position: 'absolute', top: 30, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, zIndex: 10 },
+  topNavTabs: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 15 },
+  topNavTextActive: { color: '#FFFFFF', fontSize: 17, fontWeight: 'bold', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4 },
+  topNavTextInactive: { color: 'rgba(255,255,255,0.6)', fontSize: 16, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
+  topNavSearch: { position: 'absolute', right: 20 },
   modalContainer: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   bottomSheet: { backgroundColor: COLORS.surface, height: height * 0.6, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#333', paddingBottom: 15, marginBottom: 15 },

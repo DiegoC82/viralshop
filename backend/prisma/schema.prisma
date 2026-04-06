@@ -30,6 +30,9 @@ model User {
   likes       Like[]
   comments    Comment[]
   savedVideos SavedVideo[]
+  // Relaciones de Mensajería
+  chats     Chat[]    @relation("ChatParticipants")
+  messages  Message[]
 }
 
 // Para que el usuario elija qué le gusta al iniciar
@@ -89,4 +92,30 @@ model SavedVideo {
   createdAt DateTime @default(now())
 
   @@unique([userId, videoId]) // Evita guardar el mismo video dos veces
+}
+
+// 👇 NUEVOS MODELOS PARA EL SISTEMA DE MENSAJERÍA 👇
+
+model Chat {
+  id           String    @id @default(cuid())
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  // Relaciones
+  participants User[]    @relation("ChatParticipants")
+  messages     Message[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  text      String
+  createdAt DateTime @default(now())
+  isRead    Boolean  @default(false)
+  
+  // Relaciones
+  chatId    String
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
 }

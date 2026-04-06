@@ -3,13 +3,10 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
 import { COLORS } from '../theme/colors';
 
-const INTERESTS_LIST = [
-  "Tecnología", "Gaming", "Moda", "Fitness", "Música", 
-  "Comida", "Viajes", "Arte", "Emprendimiento", "Humor"
-];
+// Importamos la lista compartida para mantener la consistencia
+import { CATEGORIES } from './SearchScreen'; 
 
 export default function InterestsScreen({ navigation }: any) {
-  // Estado para guardar los intereses que el usuario va tocando
   const [selected, setSelected] = useState<string[]>([]);
 
   const toggleInterest = (interest: string) => {
@@ -26,7 +23,7 @@ export default function InterestsScreen({ navigation }: any) {
       <Text style={styles.subtitle}>Elige al menos uno para personalizar tu feed</Text>
 
       <ScrollView contentContainerStyle={styles.grid}>
-        {INTERESTS_LIST.map((interest) => {
+        {CATEGORIES.map((interest) => {
           const isSelected = selected.includes(interest);
           return (
             <TouchableOpacity
@@ -42,11 +39,10 @@ export default function InterestsScreen({ navigation }: any) {
         })}
       </ScrollView>
 
-      {/* El botón solo aparece si seleccionó al menos un interés */}
       {selected.length > 0 && (
         <TouchableOpacity 
           style={styles.continueButton}
-          onPress={() => navigation.navigate('MainTabs')} // <-- ¡Actualizado!
+          onPress={() => navigation.navigate('MainTabs')}
         >
           <Text style={styles.continueText}>Continuar al Feed</Text>
         </TouchableOpacity>
@@ -70,7 +66,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   pillSelected: {
-    backgroundColor: COLORS.primary, // Se pinta de violeta al tocarlo
+    backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 0 },
