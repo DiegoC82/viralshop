@@ -4,45 +4,58 @@ import { View, Text, StyleSheet, Image, FlatList, TouchableOpacity, Dimensions, 
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import * as ImagePicker from 'expo-image-picker'; // <-- Importamos el selector de imágenes
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3;
-
-// 👇 REEMPLAZA CON TU IP REAL 👇
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
 export default function ProfileScreen({ navigation }: any) {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isUploading, setIsUploading] = useState(false); // Para mostrar que la foto está subiendo
+  const [isUploading, setIsUploading] = useState(false);
+  const [isGuest, setIsGuest] = useState(false); // 👇 NUEVO ESTADO PARA SABER SI ES INVITADO 👇
 
-  const fetchProfile = async () => {
+  // 👇 NUEVA LÓGICA PRINCIPAL: Decide si cargar el perfil o mostrar la pantalla de invitado 👇
+  const checkAuthAndFetchProfile = async () => {
+    setLoading(true); // Iniciamos la carga
     try {
       const token = await AsyncStorage.getItem('userToken');
+      
+      // Si no hay token, es un invitado de verdad
+      if (!token) {
+        setIsGuest(true);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      // Si hay token, intentamos traer sus datos
+      setIsGuest(false);
       const response = await axios.get(`${BACKEND_URL}/users/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProfile(response.data);
     } catch (error: any) {
-      if (error.response && error.response.status === 401) {
+      console.log("Error en perfil:", error.message);
+      // Si el token falló o expiró (401), lo tratamos como invitado
+      if (error.response?.status === 401) {
         await AsyncStorage.removeItem('userToken');
-        navigation.replace('Auth');
+        setIsGuest(true);
       }
     } finally {
-      setLoading(false);
+      setLoading(false); // Pase lo que pase, dejamos de mostrar el spinner
     }
   };
 
   useFocusEffect(
     useCallback(() => {
-      fetchProfile();
+      checkAuthAndFetchProfile();
     }, [])
   );
 
-  // 👇 NUEVA FUNCIÓN: Cambiar la foto de perfil 👇
   const handleChangeAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -50,12 +63,11 @@ export default function ProfileScreen({ navigation }: any) {
       return;
     }
 
-    // Abrimos la galería SOLO para imágenes y forzamos un recorte cuadrado (1:1)
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.5, // Bajamos un poco la calidad para que suba rapidísimo
+      quality: 0.5,
     });
 
     if (!result.canceled) {
@@ -77,7 +89,6 @@ export default function ProfileScreen({ navigation }: any) {
           },
         });
 
-        // Actualizamos la pantalla instantáneamente con la nueva foto
         setProfile({ ...profile, avatarUrl: response.data.avatarUrl });
         Alert.alert("¡Éxito!", "Foto de perfil actualizada.");
       } catch (error) {
@@ -91,7 +102,9 @@ export default function ProfileScreen({ navigation }: any) {
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('userToken');
-    navigation.replace('Auth');
+    // 👇 En lugar de mandarlo al login, lo volvemos "invitado" al instante 👇
+    setIsGuest(true); 
+    setProfile(null);
   };
 
   const getThumbnail = (videoUrl: string) => {
@@ -112,14 +125,36 @@ export default function ProfileScreen({ navigation }: any) {
     );
   }
 
+  // 🌟 SI ES INVITADO, MOSTRAMOS ESTA PANTALLA ESPECIAL 🌟
+  if (isGuest) {
+    return (
+      <View style={styles.guestContainer}>
+        <View style={styles.guestIconContainer}>
+          <Ionicons name="person-outline" size={80} color={COLORS.textMuted} />
+        </View>
+        <Text style={styles.guestTitle}>Perfil de Invitado</Text>
+        <Text style={styles.guestSubtitle}>
+          Guarda tus videos favoritos, sigue a creadores y compra productos de forma 100% segura.
+        </Text>
+        
+        <TouchableOpacity 
+          style={styles.guestButton} 
+          onPress={() => navigation.navigate('Auth')}
+        >
+          <Text style={styles.guestButtonText}>Registrarse o Iniciar Sesión</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // 🌟 SI NO ES INVITADO, MOSTRAMOS TU PERFIL NORMAL 🌟
   const avatarUri = profile?.avatarUrl 
-  ? `${profile.avatarUrl}?t=${new Date().getTime()}` // Agregamos un timestamp para burlar el caché
+  ? `${profile.avatarUrl}?t=${new Date().getTime()}`
   : `https://i.pravatar.cc/150?u=${profile?.id}`;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        {/* 👇 CONECTAMOS EL TOQUE EN LA FOTO O EL BOTÓN 👇 */}
         <TouchableOpacity onPress={handleChangeAvatar} disabled={isUploading}>
           {isUploading ? (
             <View style={[styles.avatar, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -154,7 +189,6 @@ export default function ProfileScreen({ navigation }: any) {
         keyExtractor={(item) => item.id}
         numColumns={3}
         renderItem={({ item }) => (
-          // 👇 AGREGAMOS EL onPress AQUÍ 👇
           <TouchableOpacity 
             style={styles.videoThumbnailContainer}
             onPress={() => navigation.navigate('SingleVideo', { video: item })}
@@ -173,6 +207,7 @@ export default function ProfileScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  // Estilos Originales del Perfil
   container: { flex: 1, backgroundColor: COLORS.background },
   loadingContainer: { flex: 1, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' },
   header: { alignItems: 'center', paddingTop: 50, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: '#333' },
@@ -191,5 +226,56 @@ const styles = StyleSheet.create({
   videoThumbnail: { width: '100%', height: '100%', backgroundColor: '#222' },
   viewCountBadge: { position: 'absolute', bottom: 5, left: 5, flexDirection: 'row', alignItems: 'center' },
   viewCountText: { color: '#FFF', fontSize: 12, fontWeight: 'bold', marginLeft: 3, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 },
-  emptyText: { color: COLORS.textMuted, textAlign: 'center', marginTop: 50, fontSize: 16 }
+  emptyText: { color: COLORS.textMuted, textAlign: 'center', marginTop: 50, fontSize: 16 },
+
+  // 👇 NUEVOS ESTILOS PARA EL MODO INVITADO 👇
+  guestContainer: { 
+    flex: 1, 
+    backgroundColor: COLORS.background, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    padding: 30,
+  },
+  guestIconContainer: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 30,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  guestTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 15,
+  },
+  guestSubtitle: {
+    fontSize: 16,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginBottom: 40,
+    lineHeight: 24,
+  },
+  guestButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 18,
+    paddingHorizontal: 40,
+    borderRadius: 15,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  guestButtonText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  }
 });

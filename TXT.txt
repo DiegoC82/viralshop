@@ -29,3 +29,4 @@ CLOUDINARY_API_KEY=695167335385985
 CLOUDINARY_API_SECRET=qNyb78vKw2uaE2jLejnN2K3q5FA
 
 Expo Pasword: Mi.mama223
+eas build -p android --profile preview

@@ -1,10 +1,20 @@
 // frontend/src/theme/colors.ts
-
 export const COLORS = {
-  primary: '#7930c7',    // Tu Violeta profundo
-  accent: '#09d6d3',     // Tu Turquesa/Verde vibrante
-  background: '#121212', // Un gris casi negro para que los colores resalten
-  surface: '#1E1E1E',    // Para tarjetas o modales
-  text: '#FFFFFF',       // Texto principal
-  textMuted: '#A0A0A0',  // Texto secundario
+  // Un fondo negro súper profundo con un levísimo toque morado
+  background: '#07000B', 
+  
+  // Para tarjetas, inputs y barras (un morado oscuro casi negro)
+  surface: '#160A22', 
+  
+  // El morado/magenta vibrante de tu logo para botones principales
+  primary: '#9B2BFA', 
+  
+  // El cian brillante de tu logo para detalles, precios y acentos
+  accent: '#00E5FF', 
+  
+  text: '#FFFFFF',
+  textMuted: '#8A7A9E', // Un gris con tono lavanda para que no desentone
+
+  // 👇 NUEVO: Azul Oscuro profundo para la Splash Screen y fondos Premium 👇
+  backgroundSplash: '#000B26',
 };

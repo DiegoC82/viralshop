@@ -1,34 +1,140 @@
 // frontend/src/screens/FeedScreen.tsx
-import React, { useState, useRef, useCallback } from 'react';
-import { StyleSheet, Text, View, FlatList, Dimensions, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native'; // <-- Importamos esta nueva herramienta
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { StyleSheet, Text, View, FlatList, Dimensions, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Alert, Share, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { COLORS } from '../theme/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { height, width } = Dimensions.get('window');
 
-// 👇 REEMPLAZA CON TU IP REAL 👇
-const BACKEND_URL = 'https://viralshop-xr9v.onrender.com/videos/feed';
+// 👇 Arreglamos la URL base para poder usarla en diferentes llamadas 👇
+const BASE_URL = 'https://viralshop-xr9v.onrender.com';
 
 const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
+  const navigation = useNavigation<any>();
+  
   const player = useVideoPlayer(item.videoUrl, player => {
     player.loop = true;
-    player.muted = false; // Le activamos el sonido por si tu video tiene audio
+    player.muted = false; 
   });
 
-  // Solo reproduce el video si está en el centro de la pantalla
-  React.useEffect(() => {
+  useEffect(() => {
     if (isActive) player.play();
     else player.pause();
   }, [isActive, player]); 
 
   const avatarUri = item.user?.avatarUrl || 'https://i.pravatar.cc/150?u=' + item.userId;
 
-  // Lógica simplificada de Like para la vista (puedes volver a poner la llamada a axios aquí)
-  const [isLiked, setIsLiked] = useState(false);
-  const handleLike = () => setIsLiked(!isLiked);
+  // 🌟 ESTADOS PARA LOS BOTONES Y COMENTARIOS 🌟
+  const [isLiked, setIsLiked] = useState(item.isLiked || false);
+  const [isSaved, setIsSaved] = useState(item.isSaved || false);
+  
+  // Estados del panel de comentarios
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
+
+  const handleProtectedAction = async (actionCallback: () => void) => {
+    const token = await AsyncStorage.getItem('userToken');
+    if (!token) {
+      Alert.alert(
+        "¡Únete a la comunidad! 🚀",
+        "Regístrate gratis para interactuar con tus videos favoritos.",
+        [
+          { text: "Seguir mirando", style: "cancel" },
+          { text: "Registrarme", onPress: () => navigation.navigate('Auth') }
+        ]
+      );
+      return;
+    }
+    actionCallback();
+  };
+
+  // 👇 1. LÓGICA DE COMPARTIR (Nativo del celular) 👇
+  const shareVideo = async () => {
+    try {
+      await Share.share({
+        message: `¡Mira este increíble video en ViralShop! 🚀 ${item.description || ''} - Descarga la app para verlo.`,
+      });
+    } catch (error) {
+      console.log("Error al compartir:", error);
+    }
+  };
+
+  // 👇 2. LÓGICA DE ME GUSTA (Optimista) 👇
+  const toggleLike = async () => {
+    const previousState = isLiked;
+    setIsLiked(!isLiked); // Cambia al instante (UI Optimista)
+    
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      // Llama a tu backend (asegúrate de que esta ruta exista en NestJS)
+      await axios.post(`${BASE_URL}/videos/${item.id}/like`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (error) {
+      setIsLiked(previousState); // Si falla, lo devuelve a la normalidad
+      console.log("Error al dar like:", error);
+    }
+  };
+
+  // 👇 3. LÓGICA DE GUARDAR (Optimista) 👇
+  const toggleBookmark = async () => {
+    const previousState = isSaved;
+    setIsSaved(!isSaved); // Cambia al instante
+    
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      await axios.post(`${BASE_URL}/videos/${item.id}/save`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (error) {
+      setIsSaved(previousState);
+      console.log("Error al guardar:", error);
+    }
+  };
+
+  // 👇 4. LÓGICA DE COMENTARIOS 👇
+  const openComments = async () => {
+    setShowComments(true);
+    setLoadingComments(true);
+    try {
+      // Trae los comentarios del video
+      const response = await axios.get(`${BASE_URL}/videos/${item.id}/comments`);
+      setComments(response.data || []);
+    } catch (error) {
+      console.log("Error al cargar comentarios", error);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const postComment = async () => {
+    if (newComment.trim() === '') return;
+    
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await axios.post(`${BASE_URL}/videos/${item.id}/comments`, 
+        { text: newComment },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      
+      // Agrega el comentario a la lista local para que se vea de inmediato
+      setComments([response.data, ...comments]); 
+      setNewComment(''); // Limpia el input
+    } catch (error) {
+      Alert.alert("Error", "No se pudo enviar el comentario.");
+      console.log(error);
+    }
+  };
+
+  const toggleFollow = () => {
+    console.log("Llamar a la API para Seguir al usuario");
+  };
 
   return (
     <View style={styles.videoContainer}>
@@ -36,8 +142,6 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
       <View style={styles.darkOverlay} />
       
       <View style={styles.infoOverlay}>
-        
-        {/* 👇 NUEVA ETIQUETA DE PRODUCTO (Solo aparece si el video tiene un producto) 👇 */}
         {item.productName && (
           <TouchableOpacity style={styles.productTag}>
             <Ionicons name="cart" size={16} color="#000" />
@@ -56,49 +160,107 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
       <View style={styles.actionOverlay}>
         <View style={styles.profileContainer}>
           <Image source={{ uri: avatarUri }} style={styles.profilePic} />
-          <TouchableOpacity style={styles.followButton}>
+          <TouchableOpacity style={styles.followButton} onPress={() => handleProtectedAction(toggleFollow)}>
             <Ionicons name="add" size={14} color="#FFF" />
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+        {/* BOTONES CONECTADOS */}
+        <TouchableOpacity style={styles.actionButton} onPress={() => handleProtectedAction(toggleLike)}>
           <Ionicons name={isLiked ? "heart" : "heart-outline"} size={32} color={isLiked ? "#FF2D55" : COLORS.text} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}><Ionicons name="chatbubble-ellipses" size={28} color={COLORS.text} /></TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}><Ionicons name="bookmark" size={28} color={COLORS.text} /></TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}><Ionicons name="arrow-redo" size={28} color={COLORS.text} /></TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={() => handleProtectedAction(openComments)}>
+          <Ionicons name="chatbubble-ellipses" size={28} color={COLORS.text} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={() => handleProtectedAction(toggleBookmark)}>
+          <Ionicons name={isSaved ? "bookmark" : "bookmark-outline"} size={28} color={isSaved ? COLORS.accent : COLORS.text} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={shareVideo}>
+          <Ionicons name="arrow-redo" size={28} color={COLORS.text} />
+        </TouchableOpacity>
       </View>
+
+      {/* 🌟 EL PANEL DESLIZABLE DE COMENTARIOS (MODAL) 🌟 */}
+      <Modal visible={showComments} animationType="slide" transparent={true} onRequestClose={() => setShowComments(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalContainer}>
+          <View style={styles.bottomSheet}>
+            
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Comentarios</Text>
+              <TouchableOpacity onPress={() => setShowComments(false)}>
+                <Ionicons name="close-circle" size={28} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {loadingComments ? (
+              <ActivityIndicator size="large" color={COLORS.accent} style={{ marginTop: 20 }} />
+            ) : (
+              <FlatList
+                data={comments}
+                keyExtractor={(c, index) => index.toString()}
+                renderItem={({ item: comment }) => (
+                  <View style={styles.commentBox}>
+                    <Image source={{ uri: 'https://i.pravatar.cc/150?u=' + comment.userId }} style={styles.commentAvatar} />
+                    <View style={styles.commentContent}>
+                      <Text style={styles.commentUser}>@{comment.user?.username || 'usuario'}</Text>
+                      <Text style={styles.commentText}>{comment.text}</Text>
+                    </View>
+                  </View>
+                )}
+                ListEmptyComponent={<Text style={styles.emptyText}>Sé el primero en comentar.</Text>}
+              />
+            )}
+
+            <View style={styles.inputContainer}>
+              <TextInput 
+                style={styles.commentInput} 
+                placeholder="Añadir un comentario..." 
+                placeholderTextColor={COLORS.textMuted}
+                value={newComment}
+                onChangeText={setNewComment}
+              />
+              <TouchableOpacity style={styles.sendButton} onPress={postComment}>
+                <Ionicons name="send" size={20} color={newComment.trim() ? COLORS.accent : COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
     </View>
   );
 };
+
 
 export default function FeedScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [videos, setVideos] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false); // Estado para el "Pull to refresh"
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Separamos la búsqueda de videos en su propia función
   const fetchVideos = async () => {
     try {
-      const response = await axios.get(BACKEND_URL);
+      // Usamos BASE_URL
+      const response = await axios.get(`${BASE_URL}/videos/feed`);
       setVideos(response.data);
     } catch (error) {
       console.error("Error al traer videos:", error);
     } finally {
       setLoading(false);
-      setRefreshing(false); // Escondemos la ruedita superior cuando termina
+      setRefreshing(false); 
     }
   };
 
-  // 1. Esto hace que se busquen videos nuevos cada vez que entras a la pestaña "Inicio"
   useFocusEffect(
     useCallback(() => {
       fetchVideos();
     }, [])
   );
 
-  // 2. Esta función se ejecuta cuando tiras de la pantalla hacia abajo
   const onRefresh = () => {
     setRefreshing(true);
     fetchVideos();
@@ -128,14 +290,8 @@ export default function FeedScreen() {
       decelerationRate="fast"
       onViewableItemsChanged={onViewableItemsChanged}
       viewabilityConfig={viewabilityConfig}
-      // 👇 MAGIA: Agregamos el control de "Tirar para actualizar" 👇
       refreshControl={
-        <RefreshControl 
-          refreshing={refreshing} 
-          onRefresh={onRefresh} 
-          tintColor={COLORS.accent} // Ruedita color turquesa neón
-          colors={[COLORS.accent]} // Color en Android
-        />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} colors={[COLORS.accent]} />
       }
     />
   );
@@ -155,4 +311,19 @@ const styles = StyleSheet.create({
   productTag: { flexDirection: 'row', backgroundColor: COLORS.accent, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center', marginBottom: 12, alignSelf: 'flex-start', maxWidth: '90%', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 3, elevation: 5 },
   productName: { color: '#000', fontWeight: 'bold', fontSize: 14, marginLeft: 5, marginRight: 8, flexShrink: 1 },
   productPrice: { color: '#000', fontWeight: '900', fontSize: 14, marginRight: 5 },
+  
+  // 👇 ESTILOS PARA EL PANEL DE COMENTARIOS 👇
+  modalContainer: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  bottomSheet: { backgroundColor: COLORS.surface, height: height * 0.6, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#333', paddingBottom: 15, marginBottom: 15 },
+  sheetTitle: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
+  commentBox: { flexDirection: 'row', marginBottom: 15 },
+  commentAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
+  commentContent: { flex: 1 },
+  commentUser: { color: COLORS.textMuted, fontSize: 12, fontWeight: 'bold', marginBottom: 3 },
+  commentText: { color: COLORS.text, fontSize: 14 },
+  emptyText: { color: COLORS.textMuted, textAlign: 'center', marginTop: 20 },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#333', paddingTop: 15, marginTop: 10 },
+  commentInput: { flex: 1, backgroundColor: COLORS.background, color: COLORS.text, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, marginRight: 10 },
+  sendButton: { padding: 10 },
 });

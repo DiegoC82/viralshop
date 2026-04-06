@@ -15,7 +15,6 @@ export class VideosController {
     return this.videosService.getFeed();
   }
 
-  // 👇 NUEVA RUTA DE BÚSQUEDA 👇
   @Get('search')
   searchVideos(@Query('q') query: string) {
     if (!query) return [];
@@ -28,6 +27,32 @@ export class VideosController {
     const userId = req.user.sub; 
     return this.videosService.toggleLike(videoId, userId);
   }
+
+  // 👇 NUEVAS RUTAS PARA COMENTARIOS Y GUARDADOS 👇
+
+  // Leer comentarios (Cualquiera puede, incluso invitados)
+  @Get(':id/comments')
+  getComments(@Param('id') videoId: string) {
+    return this.videosService.getComments(videoId);
+  }
+
+  // Escribir un comentario (Solo usuarios logueados)
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/comments')
+  addComment(@Param('id') videoId: string, @Body('text') text: string, @Request() req: any) {
+    const userId = req.user.sub;
+    return this.videosService.addComment(videoId, userId, text);
+  }
+
+  // Guardar video (Solo usuarios logueados)
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/save')
+  toggleSave(@Param('id') videoId: string, @Request() req: any) {
+    const userId = req.user.sub;
+    return this.videosService.toggleSave(videoId, userId);
+  }
+
+  // ---------------------------------------------------
 
   @UseGuards(JwtAuthGuard)
   @Post('upload')
@@ -43,7 +68,6 @@ export class VideosController {
   async uploadVideo(
     @UploadedFile() file: Express.Multer.File, 
     @Body('description') description: string, 
-    // 👇 Recibimos los datos del producto 👇
     @Body('productName') productName: string, 
     @Body('productPrice') productPrice: string, 
     @Body('productLink') productLink: string, 
@@ -54,7 +78,6 @@ export class VideosController {
     
     const playbackId = await this.videosService.uploadToMux(file.path);
 
-    // 👇 Pasamos los datos al servicio 👇
     const price = productPrice ? parseFloat(productPrice) : null;
     return this.videosService.createVideo(userId, description, playbackId, productName, price, productLink);
   }

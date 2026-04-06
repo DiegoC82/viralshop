@@ -1,26 +1,46 @@
 // frontend/src/screens/UploadScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native'; // 👇 Importamos useFocusEffect
 import { COLORS } from '../theme/colors';
 
-// 👇 REEMPLAZA ESTO CON TU IP REAL 👇
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
 export default function UploadScreen({ navigation }: any) {
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   
-  // Nuevos estados para conectar al comprador
   const [productName, setProductName] = useState('');
   const [productPrice, setProductPrice] = useState('');
   const [productLink, setProductLink] = useState('');
   
   const [isUploading, setIsUploading] = useState(false);
+  
+  // 👇 NUEVOS ESTADOS PARA EL INVITADO 👇
+  const [isGuest, setIsGuest] = useState(false);
+  const [loadingCheck, setLoadingCheck] = useState(true);
+
+  // 👇 LÓGICA: Verificar si es invitado al entrar a la pestaña 👇
+  useFocusEffect(
+    useCallback(() => {
+      const checkGuestMode = async () => {
+        setLoadingCheck(true);
+        const token = await AsyncStorage.getItem('userToken');
+        if (!token) {
+          setIsGuest(true);
+        } else {
+          setIsGuest(false);
+        }
+        setLoadingCheck(false);
+      };
+      checkGuestMode();
+    }, [])
+  );
 
   const pickVideo = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -61,7 +81,6 @@ export default function UploadScreen({ navigation }: any) {
       
       formData.append('description', description);
       
-      // Adjuntamos los datos del producto si el usuario los completó
       if (productName) formData.append('productName', productName);
       if (productPrice) formData.append('productPrice', productPrice);
       if (productLink) formData.append('productLink', productLink);
@@ -81,7 +100,6 @@ export default function UploadScreen({ navigation }: any) {
 
       Alert.alert("¡Éxito!", response.data.message);
       
-      // Limpiamos todo el formulario
       setVideoUri(null);
       setDescription('');
       setProductName('');
@@ -98,6 +116,41 @@ export default function UploadScreen({ navigation }: any) {
     }
   };
 
+  // MIENTRAS REVISA SI ES INVITADO
+  if (loadingCheck) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.accent} />
+      </View>
+    );
+  }
+
+  // 🌟 SI ES INVITADO, MOSTRAMOS LA PANTALLA ESPECIAL 🌟
+  if (isGuest) {
+    return (
+      <View style={styles.guestContainer}>
+        <View style={styles.guestIconContainer}>
+          <Ionicons name="cloud-upload-outline" size={80} color={COLORS.textMuted} />
+        </View>
+        <Text style={styles.guestTitle}>Comparte tus videos</Text>
+        <Text style={styles.guestSubtitle}>
+          Únete a ViralShop para subir contenido, vender productos y crecer tu audiencia.
+        </Text>
+        
+        <TouchableOpacity 
+          style={styles.guestButton} 
+          onPress={async () => {
+            await AsyncStorage.removeItem('userToken'); 
+            navigation.navigate('Auth');
+          }}
+        >
+          <Text style={styles.guestButtonText}>Registrarse o Iniciar Sesión</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // 👇 SI ES USUARIO REGISTRADO, MOSTRAMOS EL FORMULARIO NORMAL 👇
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
       {!videoUri ? (
@@ -198,4 +251,55 @@ const styles = StyleSheet.create({
   cancelButtonText: { color: COLORS.text, fontSize: 16, fontWeight: 'bold' },
   publishButton: { flex: 1, backgroundColor: COLORS.primary, padding: 15, borderRadius: 10, alignItems: 'center', marginLeft: 10 },
   publishButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+
+  // 👇 ESTILOS DEL MODO INVITADO 👇
+  guestContainer: { 
+    flex: 1, 
+    backgroundColor: COLORS.background, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    padding: 30,
+  },
+  guestIconContainer: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 30,
+    borderWidth: 2,
+    borderColor: COLORS.primary, // Podemos usar primary o accent aquí
+  },
+  guestTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginBottom: 15,
+  },
+  guestSubtitle: {
+    fontSize: 16,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginBottom: 40,
+    lineHeight: 24,
+  },
+  guestButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 18,
+    paddingHorizontal: 40,
+    borderRadius: 15,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  guestButtonText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  }
 });

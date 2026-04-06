@@ -1,8 +1,13 @@
+// frontend/src/navigation/MainTabs.tsx
 import React from 'react';
+import { View } from 'react-native';
+import { Alert } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
 
 // Importamos todas nuestras pantallas
 import FeedScreen from '../screens/FeedScreen';
@@ -15,6 +20,25 @@ const Tab = createBottomTabNavigator();
 
 export default function MainTabs() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
+
+  // 👇 FUNCIÓN PARA BLOQUEAR SOLO SUBIR Y MENSAJES 👇
+  const requireAuth = async (e: any) => {
+    const token = await AsyncStorage.getItem('userToken');
+    
+    if (!token) {
+      e.preventDefault(); // Frena la navegación a esa pestaña
+      
+      Alert.alert(
+        "¡Modo Invitado! 👀",
+        "Crea una cuenta gratuita para subir videos o enviar mensajes a otros creadores.",
+        [
+          { text: "Seguir explorando", style: "cancel" },
+          { text: "Unirme a ViralShop", onPress: () => navigation.navigate('Auth') }
+        ]
+      );
+    }
+  };
 
   return (
     <Tab.Navigator
@@ -25,12 +49,12 @@ export default function MainTabs() {
           borderTopColor: COLORS.primary,
           borderTopWidth: 1,
           height: 60 + insets.bottom,
-          paddingBottom: insets.bottom, // Y empujamos los íconos hacia arriba
+          paddingBottom: insets.bottom,
           paddingTop: 8,
-          position: 'absolute', // (Si lo tenías así para que flote sobre el video)
+          position: 'absolute', 
         },
-        tabBarActiveTintColor: COLORS.text, // Blanco cuando está activo
-        tabBarInactiveTintColor: COLORS.textMuted, // Gris cuando no
+        tabBarActiveTintColor: COLORS.text, 
+        tabBarInactiveTintColor: COLORS.textMuted, 
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
           
@@ -40,8 +64,11 @@ export default function MainTabs() {
             iconName = focused ? 'search' : 'search-outline';
           } else if (route.name === 'Subir') {
             iconName = focused ? 'add-circle' : 'add-circle-outline';
-            // El botón de subir lo hacemos más grande y turquesa
-            return <Ionicons name={iconName} size={38} color={COLORS.accent} />;
+            return (
+              <View style={{ top: -7, left: -2, width: 36, height: 37,backgroundColor: COLORS.background, borderRadius: 30 }}>
+                <Ionicons name={iconName} size={40} color={COLORS.accent} />
+              </View>
+            );
           } else if (route.name === 'Mensajes') {
             iconName = focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline';
           } else if (route.name === 'Perfil') {
@@ -54,8 +81,12 @@ export default function MainTabs() {
     >
       <Tab.Screen name="Inicio" component={FeedScreen} />
       <Tab.Screen name="Buscar" component={SearchScreen} />
-      <Tab.Screen name="Subir" component={UploadScreen} />
-      <Tab.Screen name="Mensajes" component={MessagesScreen} />
+      
+      {/* 👇 Candado en Subir y Mensajes 👇 */}
+      <Tab.Screen name="Subir" component={UploadScreen} listeners={{ tabPress: requireAuth }} />
+      <Tab.Screen name="Mensajes" component={MessagesScreen} listeners={{ tabPress: requireAuth }} />
+      
+      {/* 👇 Perfil SIN candado, dejamos que el usuario entre y vea la sorpresa 👇 */}
       <Tab.Screen name="Perfil" component={ProfileScreen} />
     </Tab.Navigator>
   );
