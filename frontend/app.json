@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
-    "version": "1.0.0",
+    "name": "ViralShop",
+    "slug": "ViralShop",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -22,7 +22,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.diegogc.frontend"
+      "package": "com.diegogc.viralshop"
     },
     "web": {
       "favicon": "./assets/favicon.png"
