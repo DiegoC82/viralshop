@@ -13,6 +13,7 @@ import InterestsScreen from './src/screens/InterestsScreen';
 import MainTabs from './src/navigation/MainTabs';
 import SingleVideoScreen from './src/screens/SingleVideoScreen';
 import SalesMetricsScreen from './src/screens/SalesMetricsScreen';
+import ChatDetailsScreen from './src/screens/ChatDetailsScreen'; // Asegúrate de ajustar la ruta
 import { COLORS } from './src/theme/colors';
 
 const { width, height } = Dimensions.get('window');
@@ -94,6 +95,7 @@ export default function App() {
           <Stack.Screen name="Interests" component={InterestsScreen} />
           <Stack.Screen name="MainTabs" component={MainTabs} /> 
           <Stack.Screen name="SingleVideo" component={SingleVideoScreen} />
+          <Stack.Screen name="ChatDetails" component={ChatDetailsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="SalesMetrics" component={SalesMetricsScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
