@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS } from '../theme/colors';
 
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
@@ -39,7 +40,11 @@ export default function MessagesScreen({ navigation }: any) {
 
   const fetchChats = async () => {
     try {
-      const response = await axios.get(`${BACKEND_URL}/chats`);
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await axios.get(`${BACKEND_URL}/chats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
       setChats(response.data);
     } catch (error) {
       console.log("Error 404: La ruta /chats no existe aún. Cargando datos de prueba...");
@@ -98,7 +103,7 @@ export default function MessagesScreen({ navigation }: any) {
           renderItem={({ item }) => (
             <TouchableOpacity 
               style={styles.chatRow}
-              onPress={() => console.log('Navegar al chat', item.id)}
+              onPress={() => navigation.navigate('ChatDetails', { chatId: item.id, chatName: item.name })}
             >
               <Image 
                 source={{ uri: item.avatar || 'https://via.placeholder.com/150' }} 
