@@ -30,16 +30,26 @@ export class UsersService {
   }
 
   // 👇 NUEVA FUNCIÓN: Sube la imagen directamente a Cloudinary 👇
-  uploadImageToCloudinary(fileBuffer: Buffer): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { folder: 'viralshop_avatars' }, // Se creará esta carpeta en tu Cloudinary
-        (error, result) => {
-          if (error) return reject(error);
-          resolve(result.secure_url); // Devuelve la URL pública y segura (https)
-        },
-      );
-      streamifier.createReadStream(fileBuffer).pipe(uploadStream);
-    });
-  }
+  async uploadImageToCloudinary(fileBuffer: Buffer): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // 1. Convertimos el Buffer de memoria a un string en Base64
+    const base64Image = fileBuffer.toString('base64');
+    
+    // 2. Le agregamos el encabezado que Cloudinary necesita para reconocerlo
+    const dataUri = `data:image/jpeg;base64,${base64Image}`;
+
+    // 3. Lo subimos a Cloudinary
+    cloudinary.uploader.upload(
+      dataUri,
+      { folder: 'viralshop_avatars' }, // Opcional: para organizar las fotos en una carpeta
+      (error, result) => {
+        if (error || !result) {
+          console.error("Error de Cloudinary:", error);
+          return reject(error || new Error('No se pudo subir la imagen a Cloudinary'));
+        }
+        resolve(result.secure_url);
+      }
+    );
+  });
+}
 }

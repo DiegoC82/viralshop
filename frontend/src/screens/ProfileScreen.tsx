@@ -98,20 +98,19 @@ export default function ProfileScreen({ navigation }: any) {
 
         formData.append('avatar', { uri: localUri, name: filename, type: type } as any);
 
-        const response = await fetch(`${BACKEND_URL}/users/avatar`, {
-          method: 'POST',
-          body: formData,
-          headers: { 'Authorization': `Bearer ${token}` },
+        const response = await axios.post(`${BACKEND_URL}/users/avatar`, formData, {
+          headers: { 
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${token}` 
+          },
         });
 
-        const responseData = await response.json();
-        if (!response.ok) throw new Error(responseData.message || "Error al subir");
-
+        const responseData = response.data;
         setProfile({ ...profile, avatarUrl: responseData.avatarUrl });
         Alert.alert("¡Éxito!", "Foto de perfil actualizada.");
-      } catch (error) {
-        console.error("Error al subir foto:", error);
-        Alert.alert("Error", "No se pudo actualizar la foto.");
+      } catch (error: any) {
+        console.error("Error al subir foto:", error.response?.data || error.message);
+        Alert.alert("Error", error.response?.data?.message || "No se pudo actualizar la foto.");
       } finally {
         setIsUploading(false);
       }
@@ -186,7 +185,7 @@ export default function ProfileScreen({ navigation }: any) {
 
   const avatarUri = profile?.avatarUrl 
     ? `${profile.avatarUrl}?t=${new Date().getTime()}`
-    : `https://i.pravatar.cc/150?u=${profile?.id || 'default'}`;
+    : `https://ui-avatars.com/api/?name=${profile?.username || 'User'}&background=random&color=fff&size=150`;
 
   return (
     <View style={styles.container}>
