@@ -1,59 +1,88 @@
-// frontend/src/screens/AuthScreen.tsx (VERSIÓN EXPO GO)
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, ScrollView, ActivityIndicator, Alert } from 'react-native';
+// frontend/src/screens/AuthScreen.tsx
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios'; 
 import { COLORS } from '../theme/colors';
-import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
-const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
+const BACKEND_URL = 'https://viralshop-xr9v.onrender.com'; 
 
 export default function AuthScreen({ navigation }: any) {
+  // 👇 EL useEffect VA AQUÍ ADENTRO 👇
+  useEffect(() => {
+    try {
+      GoogleSignin.configure({
+        webClientId: '625049952424-t0deu6n1m9o30o9anitdpjh899mtj93n.apps.googleusercontent.com', 
+      });
+    } catch (error) {
+      console.warn("GoogleSignin no pudo inicializarse. ¿Estás en Expo Go sin compilar el cliente nativo?", error);
+    }
+  }, []);
+
   const [isLogin, setIsLogin] = useState(true);
   const [showEmailForm, setShowEmailForm] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   // Estados del formulario
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  // 👇 LÓGICA REAL PARA EL CORREO (Funciona en Expo Go) 👇
+  // 👇 AQUÍ ESTÁ LA FUNCIÓN PARA EL BOTÓN DE GOOGLE 👇
+  const handleGoogleLogin = async () => {
+    setIsLoading(true); // Prende el círculo
+    try {
+      // 1. Google hace su trabajo
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      const user = response.data?.user;
+      
+      if (!user) return;
+
+      // 2. Enviamos los datos a la nueva ruta de tu backend
+      const backendResponse = await axios.post(`${BACKEND_URL}/auth/social`, {
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.photo,
+        provider: 'google'
+      });
+
+      // 3. Guardamos el token real de tu base de datos en el celular
+      await AsyncStorage.setItem('userToken', backendResponse.data.token); 
+      
+      // 4. ¡Adentro!
+      Alert.alert("¡Bienvenido!", `Hola ${user.name}`);
+      navigation.navigate('MainTabs');
+
+    } catch (error: any) {
+      console.error("Error en Google Sign-In o Backend:", error);
+      Alert.alert("Error", "No se pudo iniciar sesión correctamente.");
+    } finally {
+    setIsLoading(false); // Apaga el círculo pase lo que pase
+    }
+  };
+
   const handleAuthentication = async () => {
-    setIsLoading(true);
+    setIsLoading(true); // Prende el círculo
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
       const payload = isLogin ? { email, password } : { name, username, email, password };
-      
+
       const response = await axios.post(`${BACKEND_URL}${endpoint}`, payload);
-      
-      // Guardamos el token REAL de tu base de datos
       await AsyncStorage.setItem('userToken', response.data.token); 
-      
+
+      // 👇 AQUÍ RESOLVEMOS EL PUNTO 4: Mandamos a Intereses primero
       navigation.navigate('Interests'); 
+
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || "Error de conexión";
       Alert.alert("Atención", errorMessage);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Apaga el círculo pase lo que pase
     }
-  };
-
-  // 👇 LÓGICA SIMULADA PARA EXPO GO 👇
-  const handleSimulatedLogin = async (provider: string) => {
-    console.log(`[EXPO GO] Simulando login con ${provider}...`);
-    setIsLoading(true);
-    
-    // Fingimos que el servidor está pensando por 1 segundo
-    setTimeout(async () => {
-      // Guardamos un token falso para que el Auto-Login funcione
-      await AsyncStorage.setItem('userToken', `token_falso_de_${provider}`); 
-      setIsLoading(false);
-      
-      // Pasamos a la siguiente pantalla igual que en la app real
-      navigation.navigate('Interests'); 
-    }, 1000);
   };
 
   const handleGuest = async () => {
@@ -83,13 +112,13 @@ export default function AuthScreen({ navigation }: any) {
                   <Text style={styles.socialButtonText}>Usar correo electrónico</Text>
                 </TouchableOpacity>
 
-                {/* BOTONES SIMULADOS */}
-                <TouchableOpacity style={styles.socialButton} onPress={() => handleSimulatedLogin('Facebook')}>
+                <TouchableOpacity style={styles.socialButton} onPress={() => console.log('Facebook')}>
                   <Ionicons name="logo-facebook" size={24} color="#1877F2" style={styles.icon} />
                   <Text style={styles.socialButtonText}>Continuar con Facebook</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.socialButton} onPress={() => handleSimulatedLogin('Google')}>
+                {/* 👇 CONECTAMOS EL BOTÓN DE GOOGLE AQUÍ 👇 */}
+                <TouchableOpacity style={styles.socialButton} onPress={handleGoogleLogin}>
                   <Ionicons name="logo-google" size={24} color="#DB4437" style={styles.icon} />
                   <Text style={styles.socialButtonText}>Continuar con Google</Text>
                 </TouchableOpacity>
@@ -102,19 +131,56 @@ export default function AuthScreen({ navigation }: any) {
               <View style={{ width: '100%', alignItems: 'center' }}>
                 {!isLogin && (
                   <>
-                    <TextInput style={styles.input} placeholder="Nombre completo" placeholderTextColor={COLORS.textMuted} value={name} onChangeText={setName} />
-                    <TextInput style={styles.input} placeholder="Nombre de usuario" placeholderTextColor={COLORS.textMuted} autoCapitalize="none" value={username} onChangeText={setUsername} />
+                    <TextInput 
+                      style={styles.input} 
+                      placeholder="Nombre completo" 
+                      placeholderTextColor={COLORS.textMuted}
+                      value={name}
+                      onChangeText={setName} 
+                    />
+                    <TextInput 
+                      style={styles.input} 
+                      placeholder="Nombre de usuario" 
+                      placeholderTextColor={COLORS.textMuted} 
+                      autoCapitalize="none"
+                      value={username}
+                      onChangeText={setUsername}
+                    />
                   </>
                 )}
-                <TextInput style={styles.input} placeholder="Correo electrónico" placeholderTextColor={COLORS.textMuted} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
-                <TextInput style={styles.input} placeholder="Contraseña" placeholderTextColor={COLORS.textMuted} secureTextEntry value={password} onChangeText={setPassword} />
+
+                <TextInput 
+                  style={styles.input} 
+                  placeholder="Correo electrónico" 
+                  placeholderTextColor={COLORS.textMuted} 
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
+                />
+                <TextInput 
+                  style={styles.input} 
+                  placeholder="Contraseña" 
+                  placeholderTextColor={COLORS.textMuted} 
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
+                />
 
                 <TouchableOpacity style={styles.mainButton} onPress={handleAuthentication} disabled={isLoading}>
-                  {isLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.mainButtonText}>{isLogin ? 'Iniciar Sesión' : 'Registrarse'}</Text>}
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <Text style={styles.mainButtonText}>
+                      {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
+                   </Text>
+                 )}
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => setIsLogin(!isLogin)} style={styles.switchButton}>
-                  <Text style={styles.switchText}>{isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia Sesión'}</Text>
+                  <Text style={styles.switchText}>
+                    {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia Sesión'}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => setShowEmailForm(false)} style={styles.backButton}>
@@ -140,7 +206,7 @@ export default function AuthScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  scrollContent: { flexGrow: 1, padding: 25, paddingTop: 30, paddingBottom: 60 },
+  scrollContent: { flexGrow: 1, padding: 25, paddingTop: 30 , paddingBottom: 60 },
   mainWrapper: { flex: 1 }, 
   formContainer: { width: '100%', alignItems: 'center' },
   logoImage: { width: 470, height: 260, resizeMode: 'contain', marginBottom: 1 },

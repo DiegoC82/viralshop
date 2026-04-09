@@ -203,7 +203,7 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
                 keyExtractor={(c, index) => index.toString()}
                 renderItem={({ item: comment }) => (
                   <View style={styles.commentBox}>
-                    <Image source={{ uri: 'https://i.pravatar.cc/150?u=' + comment.userId }} style={styles.commentAvatar} />
+                    <Image source={{ uri: comment.user?.avatarUrl || `https://ui-avatars.com/api/?name=${comment.user?.username || 'User'}&background=random&color=fff&size=150` }} style={styles.commentAvatar} />
                     <View style={styles.commentContent}>
                       <Text style={styles.commentUser}>@{comment.user?.username || 'usuario'}</Text>
                       <Text style={styles.commentText}>{comment.text}</Text>

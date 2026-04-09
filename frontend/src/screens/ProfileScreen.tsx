@@ -117,12 +117,26 @@ export default function ProfileScreen({ navigation }: any) {
     }
   };
 
-  // 3. CERRAR SESIÓN
+  // 3. CERRAR SESIÓN (CORREGIDO)
   const handleLogout = async () => {
-    await AsyncStorage.removeItem('userToken');
-    setMenuVisible(false); // Cerramos el menú
-    setIsGuest(true); 
-    setProfile(null);
+    try {
+      // 1. Borramos el token
+      await AsyncStorage.removeItem('userToken');
+      
+      // 2. Limpiamos estados visuales
+      setMenuVisible(false); 
+      setIsGuest(true); 
+      setProfile(null);
+
+      // 3. ¡EXPULSIÓN AL LOGIN! Reset de la navegación
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Auth' }],
+      });
+      
+    } catch (error) {
+      console.error('Error cerrando sesión:', error);
+    }
   };
 
   // 4. GENERADOR DE MINIATURAS MUX
@@ -140,8 +154,8 @@ export default function ProfileScreen({ navigation }: any) {
   const getActiveData = () => {
     if (!profile) return [];
     if (activeTab === 'uploaded') return profile.videos || [];
-    if (activeTab === 'liked') return profile.likedVideos || []; // Asumiendo que el backend envía esto
-    if (activeTab === 'saved') return profile.savedVideos || []; // Asumiendo que el backend envía esto
+    if (activeTab === 'liked') return (profile.likes || []).map((l: any) => l.video);
+    if (activeTab === 'saved') return (profile.savedVideos || []).map((s: any) => s.video);
     return [];
   };
 
@@ -222,7 +236,7 @@ export default function ProfileScreen({ navigation }: any) {
                 {/* Asumimos que conectarás estos campos en el backend luego */}
                 <StatItem value={profile?.followingCount || 0} label="Siguiendo" />
                 <StatItem value={profile?.followersCount || 0} label="Seguidores" />
-                <StatItem value={profile?.totalLikes || 0} label="Me gusta" />
+                <StatItem value={profile?.likes?.length || 0} label="Me gusta" />
               </View>
 
               {profile?.bio ? (

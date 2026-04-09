@@ -31,12 +31,13 @@ export default function App() {
   const iconOpacity = useRef(new Animated.Value(0.03)).current; 
 
   useEffect(() => {
-    Animated.loop(
+    const splashAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(iconOpacity, { toValue: 0.15, duration: 2500, useNativeDriver: true }),
         Animated.timing(iconOpacity, { toValue: 0.03, duration: 2500, useNativeDriver: true }),
       ])
-    ).start();
+    );
+    splashAnimation.start();
 
     async function prepare() {
       try {
@@ -55,11 +56,14 @@ export default function App() {
       } catch (e) {
         console.warn(e);
       } finally {
+        splashAnimation.stop(); // 🛑 DETENEMOS LA ANIMACIÓN ANTES DE DESMONTAR PARA EVITAR CRASH NATIVO
         setAppIsReady(true);
       }
     }
 
     prepare();
+
+    return () => splashAnimation.stop(); // 🧹 Limpieza por si acaso el componente se desmonta
   }, []);
 
   if (!appIsReady) {
@@ -85,14 +89,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        {/* 👇 USAMOS initialRouteName DINÁMICO 👇 */}
         <Stack.Navigator 
           initialRouteName={initialRoute} 
           screenOptions={{ headerShown: false }} 
         >
           <Stack.Screen name="Auth" component={AuthScreen} />
           <Stack.Screen name="Interests" component={InterestsScreen} />
-          <Stack.Screen name="PreLoad" component={PreLoadScreen} /> {/* 👇 AÑADIDA AQUÍ */}
+          <Stack.Screen name="PreLoad" component={PreLoadScreen} /> 
           <Stack.Screen name="MainTabs" component={MainTabs} /> 
           <Stack.Screen name="SingleVideo" component={SingleVideoScreen} />
           <Stack.Screen name="ChatDetails" component={ChatDetailsScreen} />

@@ -8,7 +8,7 @@ export default function PreLoadScreen({ navigation }: any) {
     const fetchInitialData = async () => {
       // Aquí es donde en el futuro haremos el 'fetch' de los videos de Prisma.
       // Por ahora, simulamos 2.5 segundos de carga de datos.
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      await new Promise(resolve => setTimeout(resolve, 9500));
       
       // Una vez que los datos "cargaron", entramos a la app usando 'replace' 
       // para que el usuario no pueda volver atrás a esta pantalla cargando.

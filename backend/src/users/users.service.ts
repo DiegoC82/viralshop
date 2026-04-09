@@ -17,7 +17,17 @@ export class UsersService {
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, username: true, name: true, email: true, avatarUrl: true, createdAt: true, videos: true },
+      select: { 
+        id: true, 
+        username: true, 
+        name: true, 
+        email: true, 
+        avatarUrl: true, 
+        createdAt: true, 
+        videos: { include: { user: true } },
+        likes: { include: { video: { include: { user: true } } }, orderBy: { createdAt: 'desc' } },
+        savedVideos: { include: { video: { include: { user: true } } }, orderBy: { createdAt: 'desc' } }
+      },
     });
     return user;
   }
