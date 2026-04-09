@@ -15,4 +15,10 @@ export class AuthController {
   login(@Body() body: any) {
     return this.authService.login(body);
   }
+
+  // 👇 NUEVA RUTA PARA GOOGLE (Y FACEBOOK EN EL FUTURO) 👇
+  @Post('social')
+  socialLogin(@Body() body: any) {
+    return this.authService.socialLogin(body);
+  }
 }

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "625049952424",
+    "project_id": "viralshop-b474d",
+    "storage_bucket": "viralshop-b474d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:625049952424:android:df71bd0eb911df6356229d",
+        "android_client_info": {
+          "package_name": "com.diegogc.viralshop"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "625049952424-biang6djuta1e3d1m2ntefnd9ksfjed5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.diegogc.viralshop",
+            "certificate_hash": "f534be6e044c82ae395657be73aea40bbe3986ff"
+          }
+        },
+        {
+          "client_id": "625049952424-t0deu6n1m9o30o9anitdpjh899mtj93n.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDo_SN5trJuberZ7D7Z2kkYK0EbrgnjHuU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "625049952424-t0deu6n1m9o30o9anitdpjh899mtj93n.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

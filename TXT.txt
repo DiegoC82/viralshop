@@ -12,21 +12,6 @@ npx expo start -c ----> reinicia el emulador.
 
 npx prisma studio ---> para ver la base de datos.
 
-postgresql://neondb_owner:npg_2FVSQ0WlKeRI@ep-dark-boat-acpmyv2i-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
-const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
--------------------------
-PowerShell para obtener nuevas características y mejoras. https://aka.ms/PSWindows
-PS C:\Users\PC> ipconfig
-
-mux.com
-MUX_TOKEN_ID="47a87db1-c872-4b42-ac91-e126d235f059"
-MUX_TOKEN_SECRET="9t2VXFk+64Z5gRK8VGNvI30btJCxodnp0js8o9fsreo9YCPAYnFh1/gYNICRtfkVQJ/BB5OKEZO"
-
-CLOUDINARY_CLOUD_NAME=dd8l6whdw
-CLOUDINARY_API_KEY=695167335385985
-CLOUDINARY_API_SECRET=qNyb78vKw2uaE2jLejnN2K3q5FA
-
-Expo Pasword: Mi.mama223
 eas build -p android --profile preview --> para hacer el .apk
 

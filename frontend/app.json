@@ -2,7 +2,7 @@
   "expo": {
     "name": "ViralShop",
     "slug": "frontend",
-    "version": "1.0.2",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -22,13 +22,16 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.diegogc.viralshop"
+      "package": "com.diegogc.viralshop",
+      "googleServicesFile": "./google-services.json",
+      "navigationBar": { "backgroundColor": "#000000" }
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-video"
+      "expo-video",
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "eas": {
