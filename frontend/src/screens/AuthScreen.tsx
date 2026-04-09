@@ -1,6 +1,6 @@
 // frontend/src/screens/AuthScreen.tsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, Image, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios'; 
 import { COLORS } from '../theme/colors';
@@ -25,9 +25,11 @@ export default function AuthScreen({ navigation }: any) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   // 👇 AQUÍ ESTÁ LA FUNCIÓN PARA EL BOTÓN DE GOOGLE 👇
   const handleGoogleLogin = async () => {
+    setIsLoading(true); // Prende el círculo
     try {
       // 1. Google hace su trabajo
       await GoogleSignin.hasPlayServices();
@@ -54,21 +56,28 @@ export default function AuthScreen({ navigation }: any) {
     } catch (error: any) {
       console.error("Error en Google Sign-In o Backend:", error);
       Alert.alert("Error", "No se pudo iniciar sesión correctamente.");
+    } finally {
+    setIsLoading(false); // Apaga el círculo pase lo que pase
     }
   };
 
   const handleAuthentication = async () => {
+    setIsLoading(true); // Prende el círculo
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
       const payload = isLogin ? { email, password } : { name, username, email, password };
-      
+
       const response = await axios.post(`${BACKEND_URL}${endpoint}`, payload);
       await AsyncStorage.setItem('userToken', response.data.token); 
-      
-      navigation.navigate('MainTabs'); 
+
+      // 👇 AQUÍ RESOLVEMOS EL PUNTO 4: Mandamos a Intereses primero
+      navigation.navigate('Interests'); 
+
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || "Error de conexión";
       Alert.alert("Atención", errorMessage);
+    } finally {
+      setIsLoading(false); // Apaga el círculo pase lo que pase
     }
   };
 
@@ -154,10 +163,14 @@ export default function AuthScreen({ navigation }: any) {
                   onChangeText={setPassword}
                 />
 
-                <TouchableOpacity style={styles.mainButton} onPress={handleAuthentication}>
-                  <Text style={styles.mainButtonText}>
-                    {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
-                  </Text>
+                <TouchableOpacity style={styles.mainButton} onPress={handleAuthentication} disabled={isLoading}>
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <Text style={styles.mainButtonText}>
+                      {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
+                   </Text>
+                 )}
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => setIsLogin(!isLogin)} style={styles.switchButton}>
@@ -189,7 +202,7 @@ export default function AuthScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  scrollContent: { flexGrow: 1, padding: 25, paddingTop: 30 },
+  scrollContent: { flexGrow: 1, padding: 25, paddingTop: 30 , paddingBottom: 60 },
   mainWrapper: { flex: 1 }, 
   formContainer: { width: '100%', alignItems: 'center' },
   logoImage: { width: 470, height: 260, resizeMode: 'contain', marginBottom: 1 },

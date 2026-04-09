@@ -42,7 +42,7 @@ export default function InterestsScreen({ navigation }: any) {
       {selected.length > 0 && (
         <TouchableOpacity 
           style={styles.continueButton}
-          onPress={() => navigation.navigate('MainTabs')}
+          onPress={() => navigation.replace('PreLoad')} // Usamos replace para que no vuelva a los intereses
         >
           <Text style={styles.continueText}>Continuar al Feed</Text>
         </TouchableOpacity>

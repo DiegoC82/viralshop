@@ -14,7 +14,10 @@ import MainTabs from './src/navigation/MainTabs';
 import SingleVideoScreen from './src/screens/SingleVideoScreen';
 import SalesMetricsScreen from './src/screens/SalesMetricsScreen';
 import ChatDetailsScreen from './src/screens/ChatDetailsScreen'; // Asegúrate de ajustar la ruta
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import PreLoadScreen from './src/screens/PreLoadScreen';
 import { COLORS } from './src/theme/colors';
+
 
 const { width, height } = Dimensions.get('window');
 const Stack = createNativeStackNavigator();
@@ -24,11 +27,10 @@ SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
-  // 👇 NUEVO: Animación para que los iconos aparezcan/desaparezcan 👇
+  const [initialRoute, setInitialRoute] = useState('Auth'); // 👇 ESTADO PARA SABER A DÓNDE IR
   const iconOpacity = useRef(new Animated.Value(0.03)).current; 
 
   useEffect(() => {
-    // 👇 NUEVO: Configuración de la animación 👇
     Animated.loop(
       Animated.sequence([
         Animated.timing(iconOpacity, { toValue: 0.15, duration: 2500, useNativeDriver: true }),
@@ -38,11 +40,17 @@ export default function App() {
 
     async function prepare() {
       try {
-        // 👇 1. QUITAMOS LA PANTALLA BLANCA NATIVA INMEDIATAMENTE 👇
         await SplashScreen.hideAsync();
         
-        // --- AQUÍ SIMULAMOS EL TIEMPO DE CARGA ---
-        // 👇 3. AUMENTAMOS LA DURACIÓN A 4 SEGUNDOS 👇
+        // 👇 MAGIA DE AUTO-LOGIN: Revisamos si ya hay un usuario guardado
+        const token = await AsyncStorage.getItem('userToken');
+        if (token) {
+          setInitialRoute('PreLoad'); // Si tiene sesión, va directo a cargar las ofertas
+        } else {
+          setInitialRoute('Auth'); // Si es nuevo, va a registrarse
+        }
+        
+        // Mantenemos tus 3.5 segundos de presentación hermosa
         await new Promise(resolve => setTimeout(resolve, 3500)); 
       } catch (e) {
         console.warn(e);
@@ -55,12 +63,9 @@ export default function App() {
   }, []);
 
   if (!appIsReady) {
-    // 👇 DISEÑO DE TU SPLASH SCREEN PERSONALIZADA 👇
     return (
       <View style={styles.splashContainer}>
         <StatusBar barStyle="light-content" backgroundColor={COLORS.backgroundSplash} />
-        
-        {/* 👇 2. FONDOS FLOTANTES DE COMPRAS (con animación de opacidad) 👇 */}
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: iconOpacity }]}>
           <Ionicons name="cart-outline" size={24} color="#FFF" style={{position: 'absolute', top: height * 0.15, left: width * 0.1}} />
           <Ionicons name="pricetag-outline" size={20} color="#FFF" style={{position: 'absolute', top: height * 0.25, right: width * 0.15}} />
@@ -69,34 +74,29 @@ export default function App() {
           <Ionicons name="pricetag-outline" size={24} color="#FFF" style={{position: 'absolute', bottom: height * 0.35, right: width * 0.1}} />
         </Animated.View>
 
-        {/* Contenedor Central (Logo + Frase cerca) */}
         <View style={styles.centralContent}>
-          <Image 
-            source={require('./assets/logo.png')} // Asegúrate de tener el logo.png en assets
-            style={styles.logoImage} 
-          />
-          <Text style={styles.splashPhrase}>
-            Tu Próxima Compra Segura
-          </Text>
+          <Image source={require('./assets/logo.png')} style={styles.logoImage} />
+          <Text style={styles.splashPhrase}>Tu Próxima Compra Segura</Text>
         </View>
       </View>
     );
   }
 
-  // 👇 CUANDO CARGA, MOSTRAMOS TU NAVEGACIÓN REAL (CORREGIDA) 👇
   return (
     <SafeAreaProvider>
       <NavigationContainer>
+        {/* 👇 USAMOS initialRouteName DINÁMICO 👇 */}
         <Stack.Navigator 
-          initialRouteName="Auth" 
+          initialRouteName={initialRoute} 
           screenOptions={{ headerShown: false }} 
         >
           <Stack.Screen name="Auth" component={AuthScreen} />
           <Stack.Screen name="Interests" component={InterestsScreen} />
+          <Stack.Screen name="PreLoad" component={PreLoadScreen} /> {/* 👇 AÑADIDA AQUÍ */}
           <Stack.Screen name="MainTabs" component={MainTabs} /> 
           <Stack.Screen name="SingleVideo" component={SingleVideoScreen} />
-          <Stack.Screen name="ChatDetails" component={ChatDetailsScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="SalesMetrics" component={SalesMetricsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ChatDetails" component={ChatDetailsScreen} />
+          <Stack.Screen name="SalesMetrics" component={SalesMetricsScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
