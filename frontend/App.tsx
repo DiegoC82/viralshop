@@ -16,6 +16,7 @@ import SalesMetricsScreen from './src/screens/SalesMetricsScreen';
 import ChatDetailsScreen from './src/screens/ChatDetailsScreen'; // Asegúrate de ajustar la ruta
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import PreLoadScreen from './src/screens/PreLoadScreen';
+import MapSearchScreen from './src/screens/MapSearchScreen';
 import { COLORS } from './src/theme/colors';
 
 
@@ -97,6 +98,7 @@ export default function App() {
           <Stack.Screen name="Interests" component={InterestsScreen} />
           <Stack.Screen name="PreLoad" component={PreLoadScreen} /> 
           <Stack.Screen name="MainTabs" component={MainTabs} /> 
+          <Stack.Screen name="MapSearch" component={MapSearchScreen} />
           <Stack.Screen name="SingleVideo" component={SingleVideoScreen} />
           <Stack.Screen name="ChatDetails" component={ChatDetailsScreen} />
           <Stack.Screen name="SalesMetrics" component={SalesMetricsScreen} />
@@ -133,6 +135,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5, 
     opacity: 0.9, 
     // 👇 Añadimos un pequeño margen para equilibrar visualmente 👇
-    marginTop: -55,
+    marginTop: -35,
   },
 });

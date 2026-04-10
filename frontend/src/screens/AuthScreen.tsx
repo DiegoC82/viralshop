@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   mainWrapper: { flex: 1 }, 
   formContainer: { width: '100%', alignItems: 'center' },
   logoImage: { width: 470, height: 260, resizeMode: 'contain', marginBottom: 1 },
-  subtitle: { fontSize: 20, color: COLORS.textMuted, fontWeight: '600', marginBottom: 40, textAlign: 'center', marginTop: -55 },
+  subtitle: { fontSize: 20, color: COLORS.textMuted, fontWeight: '600', marginBottom: 40, textAlign: 'center', marginTop: -25 },
   socialButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderWidth: 1, borderColor: '#2A1A3D', paddingVertical: 15, paddingHorizontal: 20, borderRadius: 12, marginBottom: 15, width: '100%' },
   icon: { position: 'absolute', left: 20 },
   socialButtonText: { flex: 1, textAlign: 'center', color: COLORS.text, fontSize: 16, fontWeight: '600' },

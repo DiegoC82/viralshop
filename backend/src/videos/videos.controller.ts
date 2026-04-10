@@ -16,9 +16,16 @@ export class VideosController {
   }
 
   @Get('search')
-  searchVideos(@Query('q') query: string) {
-    if (!query) return [];
-    return this.videosService.searchVideos(query);
+  searchVideos(
+    @Query('q') query?: string,
+    @Query('category') category?: string,
+    @Query('subcategory') subcategory?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('radius') radius?: string,
+  ) {
+    // Ahora atrapamos TODOS los filtros y se los pasamos al servicio
+    return this.videosService.searchVideos(query, category, subcategory, lat, lng, radius);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -71,14 +78,27 @@ export class VideosController {
     @Body('productName') productName: string, 
     @Body('productPrice') productPrice: string, 
     @Body('productLink') productLink: string, 
+    @Body('category') category: string,
+    @Body('subCategory') subCategory: string,
+    @Body('latitude') latitude: string,
+    @Body('longitude') longitude: string,
     @Request() req: any
   ) {
     if (!file) throw new BadRequestException('No se envió ningún video');
     const userId = req.user.sub;
     
+    // Subimos a Mux
     const playbackId = await this.videosService.uploadToMux(file.path);
 
+    // Convertimos los textos a números si existen
     const price = productPrice ? parseFloat(productPrice) : null;
-    return this.videosService.createVideo(userId, description, playbackId, productName, price, productLink);
+    const lat = latitude ? parseFloat(latitude) : null;
+    const lng = longitude ? parseFloat(longitude) : null;
+
+    // Se lo pasamos al servicio para que lo guarde en la BD
+    return this.videosService.createVideo(
+      userId, description, playbackId, productName, price, productLink, 
+      category, subCategory, lat, lng
+    );
   }
 }

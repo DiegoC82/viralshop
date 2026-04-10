@@ -80,7 +80,16 @@ export default function MainTabs() {
       })}
     >
       <Tab.Screen name="Inicio" component={FeedScreen} />
-      <Tab.Screen name="Buscar" component={SearchScreen} />
+      <Tab.Screen 
+        name="Buscar" 
+        component={SearchScreen} 
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="search" size={size} color={color} />
+          ),
+          tabBarLabel: 'Buscar'
+        }}
+      />
       
       {/* 👇 Candado en Subir y Mensajes 👇 */}
       <Tab.Screen name="Subir" component={UploadScreen} listeners={{ tabPress: requireAuth }} />

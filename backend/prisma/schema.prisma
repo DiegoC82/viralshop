@@ -46,17 +46,21 @@ model Video {
   id           String       @id @default(cuid())
   userId       String
   user         User         @relation(fields: [userId], references: [id])
-  videoUrl     String       // URL del video (después conectaremos Mux)
+  videoUrl     String       
   description  String?
   viewCount    Int          @default(0)
   createdAt    DateTime     @default(now())
   
-  // 👇 NUEVOS CAMPOS E-COMMERCE 👇
-  productName   String?
-  productPrice  Float?
-  productLink   String?
+  productName  String?
+  productPrice Float?
+  productLink  String?
+
+  // 👇 1. NUEVOS CAMPOS DE FILTROS Y MAPA 👇
+  category     String?
+  subCategory  String?
+  latitude     Float?
+  longitude    Float?
   
-  // Relaciones Sociales
   likes        Like[]
   comments     Comment[]
   savedBy      SavedVideo[]
