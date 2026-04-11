@@ -23,7 +23,7 @@ const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3;
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
-export default function ProfileScreen({ navigation }: any) {
+export default function ProfileScreen({ navigation, route }: any) {
   // Estados de Datos
   const [profile, setProfile] = useState<any>(null);
   
@@ -33,6 +33,24 @@ export default function ProfileScreen({ navigation }: any) {
   const [isGuest, setIsGuest] = useState(false);
   const [activeTab, setActiveTab] = useState<'uploaded' | 'liked' | 'saved'>('uploaded');
   const [menuVisible, setMenuVisible] = useState(false);
+  
+  // 👇 1. AGREGAR ESTOS ESTADOS Y FUNCIONES NUEVAS 👇
+  const [editMenuVisible, setEditMenuVisible] = useState(false);
+  const isPaymentCompleted = route?.params?.paymentCompleted;
+
+  const handleSimulateUploadDNI = () => {
+    Alert.alert("DNI Subido", "Tu documento está en revisión. ¡Perfil verificado temporalmente!");
+    setProfile({ ...profile, isVerified: true });
+    // Limpiamos el parámetro para que el botón desaparezca si se vuelve a renderizar
+    navigation.setParams({ paymentCompleted: false }); 
+  };
+
+  const handleRemoveVerification = () => {
+    setProfile({ ...profile, isVerified: false });
+    setEditMenuVisible(false);
+    navigation.setParams({ paymentCompleted: false });
+    Alert.alert("Modo Test", "Se ha quitado la verificación de tu perfil.");
+  };
 
   // 1. OBTENER DATOS DEL PERFIL
   const checkAuthAndFetchProfile = async () => {
@@ -205,11 +223,18 @@ export default function ProfileScreen({ navigation }: any) {
     <View style={styles.container}>
       {/* 1. CABECERA SUPERIOR */}
       <View style={styles.headerTop}>
-        <Ionicons name="person-add-outline" size={24} color={COLORS.text} />
-        <Text style={styles.headerUsername}>@{profile?.username}</Text>
-        <TouchableOpacity onPress={() => setMenuVisible(true)}>
-          <Ionicons name="menu-outline" size={28} color={COLORS.text} />
-        </TouchableOpacity>
+        {/* Izquierda: Icono de app + nombre */}
+        <View style={styles.headerLeft}>
+          <Image source={require('../../assets/icon.png')} style={styles.appIcon} />
+          <Text style={styles.appName}>ViralShop</Text>
+        </View>
+        {/* Derecha: Agregar persona + menú hamburguesa */}
+        <View style={styles.headerRight}>
+          <Ionicons name="person-add-outline" size={24} color={COLORS.text} style={{ marginRight: 16 }} />
+          <TouchableOpacity onPress={() => setMenuVisible(true)}>
+            <Ionicons name="menu-outline" size={28} color={COLORS.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -221,22 +246,112 @@ export default function ProfileScreen({ navigation }: any) {
           <View>
             {/* 2. INFO DEL PERFIL */}
             <View style={styles.profileInfo}>
-              <TouchableOpacity onPress={handleChangeAvatar} disabled={isUploading}>
-                {isUploading ? (
-                  <View style={[styles.avatar, { justifyContent: 'center', alignItems: 'center' }]}>
-                    <ActivityIndicator color={COLORS.accent} />
+              {/* Fila superior: foto izquierda, nombre + botones derecha */}
+              <View style={styles.profileTopRow}>
+                <TouchableOpacity onPress={handleChangeAvatar} disabled={isUploading}>
+                  {isUploading ? (
+                    <View style={[styles.avatar, { justifyContent: 'center', alignItems: 'center' }]}>
+                      <ActivityIndicator color={COLORS.accent} />
+                    </View>
+                  ) : (
+                    <Image source={{ uri: avatarUri }} style={styles.avatar} />
+                  )}
+                </TouchableOpacity>
+                <View style={styles.profileRightColumn}>
+                  {/* Nombre izquierda — @ derecha */}
+                  <View style={styles.nameRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.name}>{profile?.name}</Text>
+                      {profile?.isVerified && (
+                        <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" style={{ marginLeft: 4 }} />
+                      )}
+                    </View>
+                    <Text style={styles.username}>@{profile?.username}</Text>
                   </View>
+                  <View style={styles.actionButtonsRow}>
+                    <TouchableOpacity style={styles.editProfileButton} onPress={() => setEditMenuVisible(true)}>
+                      <Text style={styles.editProfileText}>Editar perfil</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.shareButton}>
+                      <Ionicons name="share-social-outline" size={20} color={COLORS.text} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
+              {/* Stats con separadores verticales */}
+              <View style={styles.statsRow}>
+                <StatItem value={profile?.followingCount || 0} label="Siguiendo" />
+                <View style={styles.statSeparator} />
+                <StatItem value={profile?.followersCount || 0} label="Seguidores" />
+                <View style={styles.statSeparator} />
+                <StatItem value={profile?.likes?.length || 0} label="Me gusta" />
+              </View>
+
+              {/* Botón de Perfil Verificado */}
+              {/* Lógica del Botón de Verificación / Subir DNI */}
+              {!profile?.isVerified && (
+                <TouchableOpacity 
+                  style={[styles.proBanner, { borderColor: '#1DA1F2', marginTop: 2 }]} 
+                  onPress={() => {
+                    // Ahora usamos la variable limpia
+                    if (isPaymentCompleted) {
+                      handleSimulateUploadDNI();
+                    } else {
+                      navigation.navigate('VerifiedUpgrade');
+                    }
+                  }}
+                >
+                  <View style={[styles.proIconWrap, { backgroundColor: '#1DA1F2' }]}>
+                    <Ionicons name={isPaymentCompleted ? "document-text" : "checkmark-circle"} size={22} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.proTitle}>
+                      {isPaymentCompleted ? "Solo falta un paso" : "Perfil Verificado"}
+                    </Text>
+                    <Text style={styles.proSubtitle}>
+                      {isPaymentCompleted ? "Subir DNI para terminar" : "Obtener insignia oficial"}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward-outline" size={20} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              )}
+
+              {/* Banner ViralShop PRO (Bloqueado si no está verificado) */}
+              <TouchableOpacity 
+                style={[styles.proBanner, !profile?.isVerified && { opacity: 0.5, borderColor: '#333' }]}
+                onPress={() => {
+                  if (profile?.isVerified) {
+                    navigation.navigate('ProUpgrade');
+                  } else {
+                    Alert.alert("Acceso Restringido", "Primero debes obtener el Perfil Verificado para acceder a PRO.");
+                  }
+                }}
+              >
+                <View style={[styles.proIconWrap, !profile?.isVerified && { backgroundColor: '#555' }]}>
+                  <Ionicons name="ribbon-outline" size={22} color="#fff" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.proTitle}>ViralShop PRO</Text>
+                  <Text style={styles.proSubtitle}>Pasar a PRO</Text>
+                </View>
+                {profile?.isVerified ? (
+                  <Ionicons name="chevron-forward-outline" size={20} color={COLORS.textMuted} />
                 ) : (
-                  <Image source={{ uri: avatarUri }} style={styles.avatar} />
+                  <Ionicons name="lock-closed" size={16} color={COLORS.textMuted} />
                 )}
               </TouchableOpacity>
-              <Text style={styles.name}>{profile?.name}</Text>
-              
-              <View style={styles.statsRow}>
-                {/* Asumimos que conectarás estos campos en el backend luego */}
-                <StatItem value={profile?.followingCount || 0} label="Siguiendo" />
-                <StatItem value={profile?.followersCount || 0} label="Seguidores" />
-                <StatItem value={profile?.likes?.length || 0} label="Me gusta" />
+
+              {/* Botones Publicar + Ofertas */}
+              <View style={styles.mainButtonsRow}>
+                <TouchableOpacity style={styles.publishButton}>
+                  <Ionicons name="add-circle-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.publishButtonText}>Publicar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.offersButton}>
+                  <Ionicons name="pricetag-outline" size={16} color={COLORS.text} style={{ marginRight: 6 }} />
+                  <Text style={styles.offersButtonText}>Ofertas</Text>
+                </TouchableOpacity>
               </View>
 
               {profile?.bio ? (
@@ -246,15 +361,6 @@ export default function ProfileScreen({ navigation }: any) {
                   <Text style={styles.addBioText}>+ Añadir descripción corta</Text>
                 </TouchableOpacity>
               )}
-
-              <View style={styles.actionButtonsRow}>
-                <TouchableOpacity style={styles.editProfileButton} onPress={handleChangeAvatar}>
-                  <Text style={styles.editProfileText}>Editar perfil</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.shareButton}>
-                  <Text style={styles.editProfileText}>Compartir perfil</Text>
-                </TouchableOpacity>
-              </View>
             </View>
 
             {/* 3. TABS (Subidos, Likes, Guardados) */}
@@ -322,6 +428,37 @@ export default function ProfileScreen({ navigation }: any) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* 👇 NUEVO MODAL DE EDITAR PERFIL 👇 */}
+      <Modal visible={editMenuVisible} transparent={true} animationType="slide" onRequestClose={() => setEditMenuVisible(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setEditMenuVisible(false)}>
+          <View style={styles.bottomSheet}>
+            <View style={styles.bottomSheetHandle} />
+            <Text style={styles.menuTitle}>Editar Perfil</Text>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => { setEditMenuVisible(false); handleChangeAvatar(); }}>
+              <Ionicons name="camera-outline" size={24} color={COLORS.text} />
+              <Text style={styles.menuItemText}>Cambiar foto de perfil</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => {
+              setEditMenuVisible(false);
+              Alert.alert("Descripción", "Abre modal para añadir descripción corta.");
+            }}>
+              <Ionicons name="text-outline" size={24} color={COLORS.text} />
+              <Text style={styles.menuItemText}>+ Añadir descripción corta</Text>
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            {/* Opción para testing: Quitar verificación */}
+            <TouchableOpacity style={styles.menuItem} onPress={handleRemoveVerification}>
+              <Ionicons name="close-circle-outline" size={24} color="#FF2D55" />
+              <Text style={[styles.menuItemText, { color: '#FF2D55' }]}>[Test] Quitar Verificación</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -332,29 +469,51 @@ const styles = StyleSheet.create({
   
   // Cabecera superior
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 50, paddingHorizontal: 20, paddingBottom: 10 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  headerRight: { flexDirection: 'row', alignItems: 'center' },
+  appIcon: { width: 34, height: 34, borderRadius: 8, marginRight: 8 },
+  appName: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
   headerUsername: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
   
   // Perfil Info
-  profileInfo: { alignItems: 'center', paddingVertical: 15 },
-  avatar: { width: 96, height: 96, borderRadius: 48, marginBottom: 10, borderWidth: 1, borderColor: '#333' },
-  name: { color: COLORS.text, fontSize: 16, fontWeight: '600', marginBottom: 15 },
+  profileInfo: { paddingVertical: 15, paddingHorizontal: 16 },
+  profileTopRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  profileRightColumn: { flex: 1, marginLeft: 16, justifyContent: 'center' },
+  avatar: { width: 100, height: 100, borderRadius: 50 },
+  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  username: { color: COLORS.textMuted, fontSize: 13, fontWeight: '500' },
+  name: { color: COLORS.text, fontSize: 15, fontWeight: '700' },
   
   // Estadísticas
-  statsRow: { flexDirection: 'row', width: '70%', justifyContent: 'space-between', marginBottom: 15 },
-  statItem: { alignItems: 'center' },
+  statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingVertical: 12, borderTopWidth: 0.5, borderTopColor: '#333', marginBottom: 10 },
+  statItem: { alignItems: 'center', flex: 1 },
+  statSeparator: { width: 1, height: 32, backgroundColor: '#444' },
   statValue: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
   statLabel: { color: COLORS.textMuted, fontSize: 12 },
   
   // Biografía
   bioText: { color: COLORS.text, fontSize: 14, textAlign: 'center', paddingHorizontal: 40, marginBottom: 15 },
-  addBioButton: { marginBottom: 15 },
+  addBioButton: { marginBottom: 15, alignItems: 'center' },
   addBioText: { color: COLORS.accent, fontSize: 14, fontWeight: '600' },
   
-  // Botones de acción
-  actionButtonsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  editProfileButton: { backgroundColor: COLORS.surface, paddingVertical: 10, paddingHorizontal: 30, borderRadius: 4, borderWidth: 1, borderColor: '#333' },
-  shareButton: { backgroundColor: COLORS.surface, paddingVertical: 10, paddingHorizontal: 30, borderRadius: 4, borderWidth: 1, borderColor: '#333' },
-  editProfileText: { color: COLORS.text, fontSize: 14, fontWeight: '600' },
+  // Botones de acción (Editar + Compartir icono)
+  actionButtonsRow: { flexDirection: 'row', gap: 16, alignItems: 'center' },
+  editProfileButton: { backgroundColor: COLORS.surface, paddingVertical: 6, paddingHorizontal: 14, borderRadius: 6, borderWidth: 1, borderColor: '#333', alignItems: 'center' },
+  shareButton: { backgroundColor: COLORS.surface, padding: 7, borderRadius: 6, borderWidth: 1, borderColor: '#333', alignItems: 'center', justifyContent: 'center' },
+  editProfileText: { color: COLORS.text, fontSize: 12, fontWeight: '600' },
+
+  // Banner ViralShop PRO
+  proBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#2a2a2a' },
+  proIconWrap: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.accent, alignItems: 'center', justifyContent: 'center' },
+  proTitle: { color: COLORS.text, fontSize: 15, fontWeight: '700' },
+  proSubtitle: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
+
+  // Botones Publicar + Ofertas
+  mainButtonsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  publishButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.accent, paddingVertical: 11, borderRadius: 8 },
+  publishButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  offersButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, paddingVertical: 11, paddingHorizontal: 20, borderRadius: 8, borderWidth: 1, borderColor: '#333' },
+  offersButtonText: { color: COLORS.text, fontSize: 15, fontWeight: '600' },
   
   // Tabs
   tabsRow: { flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: '#333' },

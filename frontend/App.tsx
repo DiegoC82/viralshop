@@ -17,6 +17,8 @@ import ChatDetailsScreen from './src/screens/ChatDetailsScreen'; // Asegúrate d
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import PreLoadScreen from './src/screens/PreLoadScreen';
 import MapSearchScreen from './src/screens/MapSearchScreen';
+import ProUpgradeScreen from './src/screens/ProUpgradeScreen'; // Asegúrate de ajustar la ruta
+import VerifiedUpgradeScreen from './src/screens/VerifiedUpgradeScreen';
 import { COLORS } from './src/theme/colors';
 
 
@@ -102,6 +104,8 @@ export default function App() {
           <Stack.Screen name="SingleVideo" component={SingleVideoScreen} />
           <Stack.Screen name="ChatDetails" component={ChatDetailsScreen} />
           <Stack.Screen name="SalesMetrics" component={SalesMetricsScreen} />
+          <Stack.Screen name="ProUpgrade" component={ProUpgradeScreen} />
+          <Stack.Screen name="VerifiedUpgrade" component={VerifiedUpgradeScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

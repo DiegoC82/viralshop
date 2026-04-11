@@ -2,7 +2,7 @@
   "expo": {
     "name": "ViralShop",
     "slug": "frontend",
-    "version": "1.0.4",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -30,7 +30,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-video",
+      [
+        "expo-video",
+        {
+           "locationAlwaysAndWhenInUsePermission": "Permite que ViralShop use tu ubicación para mostrarte los productos y videos que están cerca de ti."
+        }
+      ],
       "@react-native-google-signin/google-signin"
     ],
     "extra": {
