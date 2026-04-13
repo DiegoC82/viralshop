@@ -21,7 +21,7 @@ export default function PreLoadScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />
-      <Text style={styles.subtitle}>Preparando ofertas para ti...</Text>
+      <Text style={styles.subtitle}>Buscando ofertas para ti...</Text>
     </View>
   );
 }

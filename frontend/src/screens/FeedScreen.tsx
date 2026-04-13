@@ -135,16 +135,16 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
       <View style={styles.darkOverlay} />
       
       <View style={styles.infoOverlay}>
-        {item.productName && (
+        {item.productName ? (
           <TouchableOpacity style={styles.productTag}>
             <Ionicons name="cart" size={16} color="#000" />
             <Text style={styles.productName} numberOfLines={1}>{item.productName}</Text>
-            {item.productPrice && (
+            {item.productPrice ? (
               <Text style={styles.productPrice}>${item.productPrice.toFixed(2)}</Text>
-            )}
+            ) : null}
             <Ionicons name="chevron-forward" size={14} color="#000" />
           </TouchableOpacity>
-        )}
+        ) : null}
 
         <Text style={styles.username}>@{item.user?.username || 'usuario'}</Text>
         <Text style={styles.description}>{item.description}</Text>
@@ -290,8 +290,8 @@ export default function FeedScreen() {
             <Text style={activeTab === 'Siguiendo' ? styles.topNavTextActive : styles.topNavTextInactive}>Siguiendo</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity onPress={() => setActiveTab('Remates')}>
-            <Text style={activeTab === 'Remates' ? styles.topNavTextActive : styles.topNavTextInactive}>Remates</Text>
+          <TouchableOpacity onPress={() => setActiveTab('Ofertas')}>
+            <Text style={activeTab === 'Ofertas' ? styles.topNavTextActive : styles.topNavTextInactive}>Ofertas</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => setActiveTab('Para ti')}>

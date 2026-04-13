@@ -31,7 +31,7 @@ export default function ProfileScreen({ navigation, route }: any) {
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
-  const [activeTab, setActiveTab] = useState<'uploaded' | 'liked' | 'saved'>('uploaded');
+  const [activeTab, setActiveTab] = useState<'uploaded' | 'liked' | 'saved' | 'metrics'>('uploaded');
   const [menuVisible, setMenuVisible] = useState(false);
   
   // 👇 1. AGREGAR ESTOS ESTADOS Y FUNCIONES NUEVAS 👇
@@ -174,6 +174,8 @@ export default function ProfileScreen({ navigation, route }: any) {
     if (activeTab === 'uploaded') return profile.videos || [];
     if (activeTab === 'liked') return (profile.likes || []).map((l: any) => l.video);
     if (activeTab === 'saved') return (profile.savedVideos || []).map((s: any) => s.video);
+    // 👇 SI ES MÉTRICAS, DEVOLVEMOS UN ARRAY CON UN SOLO OBJETO 👇
+    if (activeTab === 'metrics') return [{ id: 'metrics-view' }]; 
     return [];
   };
 
@@ -238,43 +240,60 @@ export default function ProfileScreen({ navigation, route }: any) {
       </View>
 
       <FlatList
+        key={activeTab === 'metrics' ? 'metrics-list' : 'video-grid'} // 👈 Esto evita errores de columnas
+        numColumns={activeTab === 'metrics' ? 1 : 3} // 👈 1 columna para métricas, 3 para videos
         data={getActiveData()}
         keyExtractor={(item) => item.id}
-        numColumns={3}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
         ListHeaderComponent={
           <View>
-            {/* 2. INFO DEL PERFIL */}
-            <View style={styles.profileInfo}>
-              {/* Fila superior: foto izquierda, nombre + botones derecha */}
-              <View style={styles.profileTopRow}>
+           {/* 2. INFO DEL PERFIL */}
+            <View style={[styles.profileInfo, { alignItems: 'stretch', paddingHorizontal: 16 }]}>
+              
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+                {/* Foto con borde rosado circular */}
                 <TouchableOpacity onPress={handleChangeAvatar} disabled={isUploading}>
                   {isUploading ? (
-                    <View style={[styles.avatar, { justifyContent: 'center', alignItems: 'center' }]}>
+                    <View style={[styles.avatar, { justifyContent: 'center', alignItems: 'center', borderColor: COLORS.accent, borderWidth: 2 }]}>
                       <ActivityIndicator color={COLORS.accent} />
                     </View>
                   ) : (
-                    <Image source={{ uri: avatarUri }} style={styles.avatar} />
+                    <Image source={{ uri: avatarUri }} style={[styles.avatar, { borderColor: COLORS.accent, borderWidth: 3 }]} />
                   )}
                 </TouchableOpacity>
-                <View style={styles.profileRightColumn}>
-                  {/* Nombre izquierda — @ derecha */}
-                  <View style={styles.nameRow}>
+
+                <View style={{ flex: 1, marginLeft: 16 }}>
+                  {/* Nombre izquierda — @ derecha (Reciclando tu styles.nameRow original) */}
+                  <View style={[styles.nameRow, { marginBottom: 8 }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Text style={styles.name}>{profile?.name}</Text>
+                      <Text style={[styles.name, { marginBottom: 0 }]}>{profile?.name}</Text>
                       {profile?.isVerified && (
                         <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" style={{ marginLeft: 4 }} />
                       )}
                     </View>
-                    <Text style={styles.username}>@{profile?.username}</Text>
+                    <Text style={[styles.username, { marginBottom: 0 }]}>@{profile?.username}</Text>
                   </View>
-                  <View style={styles.actionButtonsRow}>
+
+                  {/* Botones de Editar y Compartir */}
+                  <View style={[styles.actionButtonsRow, { marginBottom: 10 }]}>
                     <TouchableOpacity style={styles.editProfileButton} onPress={() => setEditMenuVisible(true)}>
                       <Text style={styles.editProfileText}>Editar perfil</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.shareButton}>
                       <Ionicons name="share-social-outline" size={20} color={COLORS.text} />
                     </TouchableOpacity>
+                  </View>
+
+                  {/* Descripción debajo de Editar Perfil, centrada al costado de la foto */}
+                  <View style={{ alignItems: 'center', paddingRight: 20 }}> 
+                    {profile?.bio ? (
+                      <Text style={[styles.bioText, { textAlign: 'center', paddingHorizontal: 0, fontSize: 13 }]}>{profile.bio}</Text>
+                    ) : (
+                      <TouchableOpacity style={styles.addBioButton} onPress={() => setEditMenuVisible(true)}>
+                        <Text style={styles.addBioText}>+ Añadir descripción corta</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               </View>
@@ -342,50 +361,104 @@ export default function ProfileScreen({ navigation, route }: any) {
                 )}
               </TouchableOpacity>
 
-              {/* Botones Publicar + Ofertas */}
-              <View style={styles.mainButtonsRow}>
-                <TouchableOpacity style={styles.publishButton}>
-                  <Ionicons name="add-circle-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={styles.publishButtonText}>Publicar</Text>
+              {/* BOTONES DIVIDIDOS: VIDEO Y REMATE */}
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+                {/* Botón Publicar Video */}
+                <TouchableOpacity 
+                  style={[styles.publishButton, { flex: 1 }]}
+                  onPress={() => navigation.navigate('Upload')} 
+                >
+                  <Ionicons name="videocam-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+                  <Text style={styles.publishButtonText}>Subir Video</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.offersButton}>
-                  <Ionicons name="pricetag-outline" size={16} color={COLORS.text} style={{ marginRight: 6 }} />
-                  <Text style={styles.offersButtonText}>Ofertas</Text>
+                
+                {/* Botón Publicar Remate */}
+                <TouchableOpacity 
+                  style={[styles.publishButton, { flex: 1, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.accent }]}
+                  onPress={() => navigation.navigate('UploadRemate')} 
+                >
+                  <Ionicons name="hammer-outline" size={18} color={COLORS.accent} style={{ marginRight: 6 }} />
+                  <Text style={[styles.publishButtonText, { color: COLORS.accent }]}>Nuevo Remate</Text>
                 </TouchableOpacity>
               </View>
-
-              {profile?.bio ? (
-                <Text style={styles.bioText}>{profile.bio}</Text>
-              ) : (
-                <TouchableOpacity style={styles.addBioButton}>
-                  <Text style={styles.addBioText}>+ Añadir descripción corta</Text>
-                </TouchableOpacity>
-              )}
             </View>
 
-            {/* 3. TABS (Subidos, Likes, Guardados) */}
+            {/* 3. TABS (Subidos, Likes, Guardados, Métricas) */}
             <View style={styles.tabsRow}>
-              <TouchableOpacity style={[styles.tab, activeTab === 'uploaded' && styles.activeTab]} onPress={() => setActiveTab('uploaded')}>
+              <TouchableOpacity 
+                style={[styles.tab, activeTab === 'uploaded' && styles.activeTab]} 
+                onPress={() => setTimeout(() => setActiveTab('uploaded'), 0)}
+              >
                 <Ionicons name="grid-outline" size={24} color={activeTab === 'uploaded' ? COLORS.text : COLORS.textMuted} />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.tab, activeTab === 'liked' && styles.activeTab]} onPress={() => setActiveTab('liked')}>
+              
+              <TouchableOpacity 
+                style={[styles.tab, activeTab === 'liked' && styles.activeTab]} 
+                onPress={() => setTimeout(() => setActiveTab('liked'), 0)}
+              >
                 <Ionicons name="heart-outline" size={24} color={activeTab === 'liked' ? COLORS.text : COLORS.textMuted} />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.tab, activeTab === 'saved' && styles.activeTab]} onPress={() => setActiveTab('saved')}>
+              
+              <TouchableOpacity 
+                style={[styles.tab, activeTab === 'saved' && styles.activeTab]} 
+                onPress={() => setTimeout(() => setActiveTab('saved'), 0)}
+              >
                 <Ionicons name="bookmark-outline" size={24} color={activeTab === 'saved' ? COLORS.text : COLORS.textMuted} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.tab, activeTab === 'metrics' && styles.activeTab]} 
+                onPress={() => setTimeout(() => setActiveTab('metrics'), 0)}
+              >
+                <Ionicons name="stats-chart-outline" size={24} color={activeTab === 'metrics' ? COLORS.text : COLORS.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.videoThumbnailContainer} onPress={() => navigation.navigate('SingleVideo', { video: item })}>
-            <Image source={{ uri: getThumbnail(item.videoUrl) }} style={styles.videoThumbnail} />
-            <View style={styles.viewsContainer}>
-              <Ionicons name="play-outline" size={12} color="#FFF" />
-              <Text style={styles.viewsText}>{item.viewCount || 0}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }) => {
+          // 👇 1. SI ESTAMOS EN LA PESTAÑA DE MÉTRICAS, DIBUJAMOS EL PANEL 👇
+          if (activeTab === 'metrics') {
+            return (
+              <View style={{ width: width, padding: 20 }}>
+                <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: 'bold', marginBottom: 15 }}>Resumen de cuenta</Text>
+                
+                <View style={{ backgroundColor: COLORS.surface, padding: 15, borderRadius: 12, marginBottom: 10 }}>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>Visualizaciones totales</Text>
+                  <Text style={{ color: COLORS.accent, fontSize: 24, fontWeight: 'bold' }}>12.5k</Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1, backgroundColor: COLORS.surface, padding: 15, borderRadius: 12 }}>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>Ventas ARS</Text>
+                    <Text style={{ color: '#4CD964', fontSize: 18, fontWeight: 'bold' }}>$85.200</Text>
+                  </View>
+                  <View style={{ flex: 1, backgroundColor: COLORS.surface, padding: 15, borderRadius: 12 }}>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>Pujas activas</Text>
+                    <Text style={{ color: COLORS.accent, fontSize: 18, fontWeight: 'bold' }}>3</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity 
+                  style={{ marginTop: 20, backgroundColor: COLORS.accent, padding: 12, borderRadius: 8, alignItems: 'center' }}
+                  onPress={() => navigation.navigate('SalesMetrics')}
+                >
+                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>Ver métricas detalladas</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          }
+
+          // 👇 2. SI NO ES MÉTRICAS, SEGUIMOS DIBUJANDO LOS VIDEOS NORMALES 👇
+          return (
+            <TouchableOpacity style={styles.videoThumbnailContainer} onPress={() => navigation.navigate('SingleVideo', { video: item })}>
+              <Image source={{ uri: getThumbnail(item.videoUrl) }} style={styles.videoThumbnail} />
+              <View style={styles.viewsContainer}>
+                <Ionicons name="play-outline" size={12} color="#FFF" />
+                <Text style={styles.viewsText}>{item.viewCount || 0}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        }}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No hay videos aquí aún.</Text>
         }
@@ -510,7 +583,7 @@ const styles = StyleSheet.create({
 
   // Botones Publicar + Ofertas
   mainButtonsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  publishButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.accent, paddingVertical: 11, borderRadius: 8 },
+  publishButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.accent, paddingVertical: 12, borderRadius: 10 },
   publishButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   offersButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, paddingVertical: 11, paddingHorizontal: 20, borderRadius: 8, borderWidth: 1, borderColor: '#333' },
   offersButtonText: { color: COLORS.text, fontSize: 15, fontWeight: '600' },

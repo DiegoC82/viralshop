@@ -12,7 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 // Importamos todas nuestras pantallas
 import FeedScreen from '../screens/FeedScreen';
 import SearchScreen from '../screens/SearchScreen';
-import UploadScreen from '../screens/UploadScreen';
+import RemateScreen from '../screens/RemateScreen';
 import MessagesScreen from '../screens/MessagesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
@@ -62,10 +62,10 @@ export default function MainTabs() {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Buscar') {
             iconName = focused ? 'search' : 'search-outline';
-          } else if (route.name === 'Subir') {
+          } else if (route.name === 'Remates') {
             iconName = focused ? 'add-circle' : 'add-circle-outline';
             return (
-              <View style={{ top: -7, left: -2, width: 36, height: 37,backgroundColor: COLORS.background, borderRadius: 30 }}>
+              <View style={{ top: -6, left: -2, width: 36, height: 37,backgroundColor: COLORS.background, borderRadius: 30 }}>
                 <Ionicons name={iconName} size={40} color={COLORS.accent} />
               </View>
             );
@@ -92,7 +92,33 @@ export default function MainTabs() {
       />
       
       {/* 👇 Candado en Subir y Mensajes 👇 */}
-      <Tab.Screen name="Subir" component={UploadScreen} listeners={{ tabPress: requireAuth }} />
+      <Tab.Screen 
+        name="Remates" 
+        component={RemateScreen} 
+        options={{
+          tabBarIcon: ({ focused }) => (
+            // 👇 Agregamos el contenedor circular para resaltar el martillo
+            <View style={{ 
+              top: -10, // Lo subimos un poco para que sobresalga
+              width: 50, 
+              height: 50, 
+              backgroundColor: COLORS.background, 
+              borderRadius: 25, 
+              justifyContent: 'center', 
+              alignItems: 'center',
+              borderWidth: 3,
+              borderColor: focused ? COLORS.accent : '#333' // Brilla cuando estás ahí
+            }}>
+              <Ionicons 
+                name={focused ? 'hammer' : 'hammer-outline'} 
+                size={28} 
+                color={COLORS.accent} 
+              />
+            </View>
+          ),
+          tabBarLabel: 'Remate'
+        }} 
+      />
       <Tab.Screen name="Mensajes" component={MessagesScreen} listeners={{ tabPress: requireAuth }} />
       
       {/* 👇 Perfil SIN candado, dejamos que el usuario entre y vea la sorpresa 👇 */}

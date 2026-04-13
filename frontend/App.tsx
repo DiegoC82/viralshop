@@ -18,7 +18,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import PreLoadScreen from './src/screens/PreLoadScreen';
 import MapSearchScreen from './src/screens/MapSearchScreen';
 import ProUpgradeScreen from './src/screens/ProUpgradeScreen'; // Asegúrate de ajustar la ruta
+import UploadScreen from './src/screens/UploadScreen';
 import VerifiedUpgradeScreen from './src/screens/VerifiedUpgradeScreen';
+import UploadRemateScreen from './src/screens/UploadRemateScreen';
 import { COLORS } from './src/theme/colors';
 
 
@@ -106,6 +108,8 @@ export default function App() {
           <Stack.Screen name="SalesMetrics" component={SalesMetricsScreen} />
           <Stack.Screen name="ProUpgrade" component={ProUpgradeScreen} />
           <Stack.Screen name="VerifiedUpgrade" component={VerifiedUpgradeScreen} />
+          <Stack.Screen name="Upload" component={UploadScreen} />
+          <Stack.Screen name="UploadRemate" component={UploadRemateScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

@@ -2,7 +2,7 @@
   "expo": {
     "name": "ViralShop",
     "slug": "frontend",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -30,8 +30,9 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-video",
       [
-        "expo-video",
+        "expo-location",
         {
            "locationAlwaysAndWhenInUsePermission": "Permite que ViralShop use tu ubicación para mostrarte los productos y videos que están cerca de ti."
         }
