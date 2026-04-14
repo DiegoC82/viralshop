@@ -2,9 +2,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
 import { COLORS } from '../theme/colors';
-
-// Importamos la lista compartida para mantener la consistencia
-import { CATEGORIES } from './SearchScreen'; 
+import { SIMPLE_CATEGORIES } from '../data/categories';
+ 
 
 export default function InterestsScreen({ navigation }: any) {
   const [selected, setSelected] = useState<string[]>([]);
@@ -23,7 +22,8 @@ export default function InterestsScreen({ navigation }: any) {
       <Text style={styles.subtitle}>Elige al menos uno para personalizar tu feed</Text>
 
       <ScrollView contentContainerStyle={styles.grid}>
-        {CATEGORIES.map((interest) => {
+        {/* 👇 2. DIBUJAMOS LOS BOTONES USANDO LA LISTA MAESTRA */}
+        {SIMPLE_CATEGORIES.map((interest: string) => {
           const isSelected = selected.includes(interest);
           return (
             <TouchableOpacity
