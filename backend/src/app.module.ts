@@ -4,10 +4,12 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { VideosModule } from './videos/videos.module';
 import { UsersModule } from './users/users.module';
+import { ScheduleModule } from '@nestjs/schedule'; // 👈 1. Importamos el módulo
+import { ChatsController } from './chats/chats.controller';
 
 @Module({
-  imports: [AuthModule, VideosModule, UsersModule],
-  controllers: [AppController],
+  imports: [AuthModule, VideosModule, UsersModule, ScheduleModule.forRoot()],
+  controllers: [AppController, ChatsController],
   providers: [AppService],
 })
 export class AppModule {}

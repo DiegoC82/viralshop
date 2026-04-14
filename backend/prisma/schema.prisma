@@ -20,6 +20,7 @@ model User {
   password    String       // <-- ¡Añadimos este campo!
   avatarUrl   String?
   bio         String?
+  pushToken   String?      // 👈 ¡Agregamos esto para las notificaciones!
   role        UserRole     @default(BUYER)
   isVerified  Boolean      @default(false) // Perfil verificado
   createdAt   DateTime     @default(now())

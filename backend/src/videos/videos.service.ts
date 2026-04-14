@@ -2,17 +2,21 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import Mux from '@mux/mux-node';
+import { Cron, CronExpression } from '@nestjs/schedule'; // 👈 Importamos el Robot
 import * as fs from 'fs';
+import { Expo } from 'expo-server-sdk';
 
 @Injectable()
 export class VideosService {
   private mux: Mux;
+  private expo: Expo; // 👈 1. Declaramos Expo
 
   constructor(private prisma: PrismaService) {
     this.mux = new Mux({
       tokenId: process.env.MUX_TOKEN_ID,
       tokenSecret: process.env.MUX_TOKEN_SECRET,
     });
+    this.expo = new Expo(); // 👈 2. Lo inicializamos
   }
 
   async getFeed() {
@@ -30,19 +34,15 @@ export class VideosService {
     }
   }
 
-  // 👇 NUEVAS FUNCIONES PARA COMENTARIOS Y GUARDADOS 👇
-
   async getComments(videoId: string) {
-    // Busca los comentarios de un video específico e incluye los datos del usuario que lo escribió
     return this.prisma.comment.findMany({
       where: { videoId },
       include: { user: true }, 
-      orderBy: { createdAt: 'desc' } // Los más nuevos arriba
+      orderBy: { createdAt: 'desc' }
     });
   }
 
   async addComment(videoId: string, userId: string, text: string) {
-    // Crea el comentario y devuelve la info completa (incluyendo foto del usuario) para la app
     return this.prisma.comment.create({
       data: { videoId, userId, text },
       include: { user: true }
@@ -59,8 +59,6 @@ export class VideosService {
       return { saved: true };
     }
   }
-
-  // ---------------------------------------------------
 
   async uploadToMux(filePath: string): Promise<string> {
     const upload = await this.mux.video.uploads.create({
@@ -89,43 +87,23 @@ export class VideosService {
   }
 
   async createVideo(
-    userId: string, 
-    description: string, 
-    playbackId: string, 
-    productName?: string, 
-    productPrice?: number, 
-    productLink?: string,
-    // 👇 AGREGAMOS LOS NUEVOS PARÁMETROS AQUÍ 👇
-    category?: string,
-    subCategory?: string,
-    latitude?: number,
-    longitude?: number
+    userId: string, description: string, playbackId: string, 
+    productName?: string, productPrice?: number, productLink?: string,
+    category?: string, subCategory?: string, latitude?: number, longitude?: number
   ) {
     const videoUrl = `https://stream.mux.com/${playbackId}.m3u8`;
-    
     const newVideo = await this.prisma.video.create({
       data: { 
-        userId, 
-        description, 
-        videoUrl, 
-        productName, 
-        productPrice, 
-        productLink,
-        // 👇 GUARDAMOS TODO EN LA BASE DE DATOS 👇
-        category,
-        subCategory,
-        latitude,
-        longitude
+        userId, description, videoUrl, productName, productPrice, productLink,
+        category, subCategory, latitude, longitude
       },
     });
     return { message: '¡Video publicado con éxito!', video: newVideo };
   }
 
- // 👇 REEMPLAZA LA FUNCIÓN AL FINAL DEL ARCHIVO 👇
   async searchVideos(query?: string, category?: string, subcategory?: string, lat?: string, lng?: string, radius?: string) {
     const whereClause: any = {};
 
-    // 1. Filtro por texto
     if (query) {
       whereClause.OR = [
         { productName: { contains: query, mode: 'insensitive' } },
@@ -133,35 +111,19 @@ export class VideosService {
         { user: { username: { contains: query, mode: 'insensitive' } } }
       ];
     }
+    if (category && category !== 'Todos') whereClause.category = category;
+    if (subcategory) whereClause.subCategory = subcategory;
 
-    // 2. Filtro por Categoría
-    if (category && category !== 'Todos') {
-      whereClause.category = category;
-    }
-
-    // 3. Filtro por Sub-categoría
-    if (subcategory) {
-      whereClause.subCategory = subcategory;
-    }
-
-    // 4. Filtro por GPS (Radio en KM)
     if (lat && lng && radius) {
       const latNum = parseFloat(lat);
       const lngNum = parseFloat(lng);
       const radiusKm = parseFloat(radius);
-      const degreeRadius = radiusKm / 111; // 1 grado son aprox 111km
+      const degreeRadius = radiusKm / 111;
 
-      whereClause.latitude = {
-        gte: latNum - degreeRadius,
-        lte: latNum + degreeRadius,
-      };
-      whereClause.longitude = {
-        gte: lngNum - degreeRadius,
-        lte: lngNum + degreeRadius,
-      };
+      whereClause.latitude = { gte: latNum - degreeRadius, lte: latNum + degreeRadius };
+      whereClause.longitude = { gte: lngNum - degreeRadius, lte: lngNum + degreeRadius };
     }
 
-    // Ejecutamos la búsqueda combinada
     return this.prisma.video.findMany({
       where: whereClause,
       include: { user: true },
@@ -170,66 +132,130 @@ export class VideosService {
   }
 
   // ==========================================
-  // 👇 NUEVAS FUNCIONES PARA REMATES (SUBASTAS) 👇
+  // 👇 FUNCIONES PARA REMATES (SUBASTAS) 👇
   // ==========================================
 
-  // 1. Guardar un Remate (24hs)
   async createRemate(userId: string, playbackId: string, productName: string, basePrice: number) {
     const videoUrl = `https://stream.mux.com/${playbackId}.m3u8`;
-    
-    // Configuramos el reloj: Ahora + 24 horas
     const auctionEndsAt = new Date();
     auctionEndsAt.setHours(auctionEndsAt.getHours() + 24);
 
     const newRemate = await this.prisma.video.create({
       data: {
-        userId,
-        description: "Remate 24hs",
-        videoUrl,
-        productName,
-        productPrice: basePrice, // El precio inicial
-        isAuction: true,
-        auctionEndsAt,
+        userId, description: "Remate 24hs", videoUrl, productName, 
+        productPrice: basePrice, isAuction: true, auctionEndsAt,
       },
     });
     return { message: '¡Remate publicado con éxito!', remate: newRemate };
   }
 
-  // 2. Obtener Remates Activos para la app
   async getActiveAuctions() {
     return this.prisma.video.findMany({
       where: {
         isAuction: true,
-        auctionEndsAt: { gt: new Date() } // Solo trae los que NO han vencido
+        auctionEndsAt: { gt: new Date() }
       },
       include: { 
         user: true,
-        bids: { include: { user: true }, orderBy: { amount: 'desc' } } // Trae las pujas de mayor a menor
+        bids: { include: { user: true }, orderBy: { amount: 'desc' } }
       },
-      orderBy: { auctionEndsAt: 'asc' } // Los que están por terminar aparecen primero
+      orderBy: { auctionEndsAt: 'asc' }
     });
   }
 
-  // 3. Hacer una Puja (Bid)
   async placeBid(videoId: string, userId: string, amount: number) {
-    // Validamos que el remate exista y siga activo
     const video = await this.prisma.video.findUnique({ where: { id: videoId } });
     if (!video || !video.isAuction || new Date() > new Date(video.auctionEndsAt!)) {
       throw new Error('El remate ya finalizó o no existe.');
     }
 
-    // Creamos la oferta en la base de datos
     const bid = await this.prisma.bid.create({
       data: { videoId, userId, amount },
       include: { user: true }
     });
 
-    // Actualizamos el precio del video para que sea la oferta más alta
     await this.prisma.video.update({
       where: { id: videoId },
       data: { productPrice: amount }
     });
 
     return bid;
+  }
+
+  // ==========================================
+  // ⚖️ EL ROBOT AUTOMÁTICO QUE CIERRA REMATES
+  // ==========================================
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async checkAndCloseAuctions() {
+    const now = new Date();
+
+    // 1. Busca remates que ya pasaron las 24 horas y siguen abiertos
+    const expiredAuctions = await this.prisma.video.findMany({
+      where: {
+        isAuction: true,
+        isAuctionClosed: false,
+        auctionEndsAt: { lte: now } 
+      },
+      include: { 
+        bids: { orderBy: { amount: 'desc' }, take: 1, include: { user: true } },
+        user: true 
+      }
+    });
+
+    if (expiredAuctions.length === 0) return;
+
+    // 2. Si encuentra remates vencidos, los procesa
+    for (const auction of expiredAuctions) {
+      // Los marca como CERRADOS en la base de datos
+      await this.prisma.video.update({
+        where: { id: auction.id },
+        data: { isAuctionClosed: true }
+      });
+
+      // 3. Vemos si hubo un ganador y le armamos el chat
+      if (auction.bids.length > 0) {
+        const winner = auction.bids[0].user;
+        const finalPrice = auction.bids[0].amount;
+        const sellerId = auction.userId;
+        
+        console.log(`🎉 REMATE CERRADO: ${auction.productName}`);
+        
+        try {
+          // CREA EL CHAT AUTOMÁTICAMENTE
+          await this.prisma.chat.create({
+            data: {
+              participants: { connect: [{ id: sellerId }, { id: winner.id }] },
+              messages: {
+                create: {
+                  text: `🎉 ¡Felicidades @${winner.username}! Has ganado mi remate de "${auction.productName}" por $${finalPrice.toLocaleString('es-AR')}. Coordinemos por aquí el pago y el envío.`,
+                  senderId: sellerId 
+                }
+              }
+            }
+          });
+          console.log(`💬 Chat creado exitosamente.`);
+          // 👇 ¡NUEVO: DISPARAR NOTIFICACIÓN PUSH AL CELULAR! 👇
+          if (winner.pushToken && Expo.isExpoPushToken(winner.pushToken)) {
+            try {
+              await this.expo.sendPushNotificationsAsync([{
+                to: winner.pushToken,
+                sound: 'default',
+                title: '¡Ganaste el remate! 🎉',
+                body: `Tu oferta de $${finalPrice} fue la más alta por "${auction.productName}". ¡Toca aquí para coordinar el pago!`,
+                data: { route: 'ChatDetails', chatId: auction.id }, // Para que al tocar la notificación abra el chat
+              }]);
+              console.log(`📱 Notificación Push enviada al celular de @${winner.username}`);
+            } catch (pushError) {
+              console.error(`❌ Error enviando Push al ganador:`, pushError);
+            }
+          }
+        } catch (error) {
+          console.error(`❌ Error creando el chat:`, error);
+        }
+      } else {
+        console.log(`😔 REMATE CERRADO: ${auction.productName} (Sin ofertas)`);
+      }
+    }
   }
 }

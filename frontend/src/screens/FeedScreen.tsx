@@ -8,18 +8,82 @@ import axios from 'axios';
 import { COLORS } from '../theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// 👇 1. IMPORTAMOS LAS HERRAMIENTAS DE NOTIFICACIONES 👇
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+
 const { height, width } = Dimensions.get('window');
 const BASE_URL = 'https://viralshop-xr9v.onrender.com';
 
+// 👇 2. CONFIGURACIÓN DE NOTIFICACIONES EN PRIMER PLANO 👇
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true, // 👈 ¡Agregamos esto!
+    shouldShowList: true,   // 👈 ¡Y esto!
+  }),
+});
+
+// 👇 3. LA FUNCIÓN QUE PIDE PERMISO Y GUARDA EL TOKEN 👇
+async function registerForPushNotificationsAsync() {
+  let token;
+
+  if (Device.isDevice) {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      console.log('Fallo al obtener el token para notificaciones push');
+      return;
+    }
+
+    // Genera el token del celular
+    token = (await Notifications.getExpoPushTokenAsync()).data;
+    console.log("Token generado:", token);
+
+    // Lo envía al backend
+    try {
+      const userToken = await AsyncStorage.getItem('userToken');
+      if (userToken) {
+        await axios.patch(`${BASE_URL}/users/update-push-token`, 
+          { pushToken: token },
+          { headers: { Authorization: `Bearer ${userToken}` } }
+        );
+        console.log("Token guardado en el servidor con éxito.");
+      }
+    } catch (error) {
+      console.error("Error guardando el token en el servidor:", error);
+    }
+  } else {
+    console.log('Debes usar un dispositivo físico para las notificaciones push');
+  }
+
+  if (Platform.OS === 'android') {
+    Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
+  }
+
+  return token;
+}
+
 const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
   const navigation = useNavigation<any>();
-  
-  // 👇 1. NUEVO ESTADO PARA EL AUDIO: Mantenemos el volumen por defecto (muted = false) 👇
   const [isMuted, setIsMuted] = useState(false); 
 
   const player = useVideoPlayer(item.videoUrl, player => {
     player.loop = true;
-    player.muted = isMuted; // Sincronizado con el estado inicial
+    player.muted = isMuted; 
   });
 
   useEffect(() => {
@@ -117,11 +181,8 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
     }
   };
 
-  // 👇 2. FUNCIÓN DE AUDIO (Apagar/Prender) 👇
   const toggleMute = () => {
-    // Actualizamos la instancia del reproductor directamente
     player.muted = !isMuted;
-    // Actualizamos el estado para cambiar el icono
     setIsMuted(!isMuted);
   };
 
@@ -174,14 +235,8 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
           <Ionicons name="arrow-redo" size={28} color={COLORS.text} />
         </TouchableOpacity>
 
-        {/* 👇 3. NUEVO BOTÓN DE AUDIO (Debajo de compartir, sin mover nada) 👇 */}
         <TouchableOpacity style={styles.actionButton} onPress={toggleMute}>
-          <Ionicons 
-            // Cambia el icono dinámicamente si está silenciado o no
-            name={isMuted ? "volume-mute" : "volume-high"} 
-            size={28} 
-            color={COLORS.text} 
-          />
+          <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={28} color={COLORS.text} />
         </TouchableOpacity>
       </View>
 
@@ -229,11 +284,9 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
     </View>
   );
 };
-
 
 export default function FeedScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -244,6 +297,11 @@ export default function FeedScreen() {
 
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
+
+  // 👇 4. DISPARAMOS LA PETICIÓN DE NOTIFICACIONES AL ABRIR LA APP 👇
+  useEffect(() => {
+    registerForPushNotificationsAsync();
+  }, []);
 
   const fetchVideos = async () => {
     try {
@@ -283,7 +341,6 @@ export default function FeedScreen() {
 
   return (
     <View style={styles.mainContainer}>
-      
       <View style={styles.topNavContainer}>
         <View style={styles.topNavTabs}>
           <TouchableOpacity onPress={() => setActiveTab('Siguiendo')}>
@@ -333,7 +390,6 @@ const styles = StyleSheet.create({
   profileContainer: { alignItems: 'center', marginBottom: 20 },
   profilePic: { width: 50, height: 50, borderRadius: 25, borderWidth: 2, borderColor: COLORS.accent },
   followButton: { position: 'absolute', bottom: -10, backgroundColor: COLORS.primary, width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  // 👇 Se mantiene el estilo original 👇
   actionButton: { width: 50, height: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
   productTag: { flexDirection: 'row', backgroundColor: COLORS.accent, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center', marginBottom: 12, alignSelf: 'flex-start', maxWidth: '90%', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 3, elevation: 5 },
   productName: { color: '#000', fontWeight: 'bold', fontSize: 14, marginLeft: 5, marginRight: 8, flexShrink: 1 },

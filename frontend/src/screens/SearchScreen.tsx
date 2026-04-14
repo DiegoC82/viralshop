@@ -313,7 +313,6 @@ export default function SearchScreen({ navigation }: any) {
         <View style={styles.locationFilterWrapper}>
           <View style={styles.breadcrumbWrapper}>
             {mapFilters && mapFilters.mapRadius ? (
-              // 👇 ETIQUETA CON BOTÓN DE CERRAR ("X") 👇
               <View style={styles.activeMapFilter}>
                 <Ionicons name="radio-outline" size={16} color={COLORS.accent} style={{ marginRight: 5 }} />
                 <Text style={styles.breadcrumbLink}>Buscando a {mapFilters.mapRadius}km de ti</Text>
@@ -322,7 +321,6 @@ export default function SearchScreen({ navigation }: any) {
                 </TouchableOpacity>
               </View>
             ) : (
-              // 👇 TU CIUDAD NORMAL 👇
               <>
                 <Text style={styles.breadcrumbText}>Argentina &gt; </Text>
                 <TouchableOpacity onPress={() => setProvinceDropdownVisible(true)} style={styles.interactiveBreadcrumb}>
@@ -346,6 +344,7 @@ export default function SearchScreen({ navigation }: any) {
         </View>
       </View>
 
+      {/* Modal de Subcategorías */}
       <Modal visible={subModalVisible} transparent={true} animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSubModalVisible(false)}>
           <View style={styles.dropdownContainer}>
@@ -378,7 +377,11 @@ export default function SearchScreen({ navigation }: any) {
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.videoThumbnailContainer} onPress={() => navigation.navigate('SingleVideo', { video: item })}>
               <Image source={{ uri: getThumbnail(item.videoUrl) }} style={styles.videoThumbnail} />
-              {item.productPrice && <View style={styles.priceTag}><Text style={styles.priceText}>${item.productPrice}</Text></View>}
+              {item.productPrice ? (
+                <View style={styles.priceTag}>
+                  <Text style={styles.priceText}>${item.productPrice}</Text>
+                </View>
+              ) : null}
             </TouchableOpacity>
           )}
           ListEmptyComponent={
