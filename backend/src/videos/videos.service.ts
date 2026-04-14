@@ -168,4 +168,68 @@ export class VideosService {
       orderBy: { createdAt: 'desc' }
     });
   }
+
+  // ==========================================
+  // 👇 NUEVAS FUNCIONES PARA REMATES (SUBASTAS) 👇
+  // ==========================================
+
+  // 1. Guardar un Remate (24hs)
+  async createRemate(userId: string, playbackId: string, productName: string, basePrice: number) {
+    const videoUrl = `https://stream.mux.com/${playbackId}.m3u8`;
+    
+    // Configuramos el reloj: Ahora + 24 horas
+    const auctionEndsAt = new Date();
+    auctionEndsAt.setHours(auctionEndsAt.getHours() + 24);
+
+    const newRemate = await this.prisma.video.create({
+      data: {
+        userId,
+        description: "Remate 24hs",
+        videoUrl,
+        productName,
+        productPrice: basePrice, // El precio inicial
+        isAuction: true,
+        auctionEndsAt,
+      },
+    });
+    return { message: '¡Remate publicado con éxito!', remate: newRemate };
+  }
+
+  // 2. Obtener Remates Activos para la app
+  async getActiveAuctions() {
+    return this.prisma.video.findMany({
+      where: {
+        isAuction: true,
+        auctionEndsAt: { gt: new Date() } // Solo trae los que NO han vencido
+      },
+      include: { 
+        user: true,
+        bids: { include: { user: true }, orderBy: { amount: 'desc' } } // Trae las pujas de mayor a menor
+      },
+      orderBy: { auctionEndsAt: 'asc' } // Los que están por terminar aparecen primero
+    });
+  }
+
+  // 3. Hacer una Puja (Bid)
+  async placeBid(videoId: string, userId: string, amount: number) {
+    // Validamos que el remate exista y siga activo
+    const video = await this.prisma.video.findUnique({ where: { id: videoId } });
+    if (!video || !video.isAuction || new Date() > new Date(video.auctionEndsAt!)) {
+      throw new Error('El remate ya finalizó o no existe.');
+    }
+
+    // Creamos la oferta en la base de datos
+    const bid = await this.prisma.bid.create({
+      data: { videoId, userId, amount },
+      include: { user: true }
+    });
+
+    // Actualizamos el precio del video para que sea la oferta más alta
+    await this.prisma.video.update({
+      where: { id: videoId },
+      data: { productPrice: amount }
+    });
+
+    return bid;
+  }
 }

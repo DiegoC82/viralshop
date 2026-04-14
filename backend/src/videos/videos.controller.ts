@@ -101,4 +101,47 @@ export class VideosController {
       category, subCategory, lat, lng
     );
   }
+  // ==========================================
+  // 👇 NUEVAS RUTAS PARA REMATES (SUBASTAS) 👇
+  // ==========================================
+
+  @Get('remates')
+  getActiveAuctions() {
+    return this.videosService.getActiveAuctions();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('remate')
+  @UseInterceptors(FileInterceptor('video', {
+    storage: diskStorage({
+      destination: './uploads',
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+        cb(null, `remate-${uniqueSuffix}${extname(file.originalname)}`);
+      }
+    })
+  }))
+  async uploadRemate(
+    @UploadedFile() file: Express.Multer.File, 
+    @Body('title') title: string,
+    @Body('basePrice') basePrice: string,
+    @Request() req: any
+  ) {
+    if (!file) throw new BadRequestException('Falta el video del remate');
+    const userId = req.user.sub;
+    const priceNum = parseFloat(basePrice);
+
+    // 1. Subimos a Mux reciclando tu función existente!
+    const playbackId = await this.videosService.uploadToMux(file.path);
+
+    // 2. Guardamos en la base de datos con formato de Subasta
+    return this.videosService.createRemate(userId, playbackId, title, priceNum);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/bid')
+  async placeBid(@Param('id') videoId: string, @Body('amount') amount: number, @Request() req: any) {
+    const userId = req.user.sub;
+    return this.videosService.placeBid(videoId, userId, amount);
+  }
 }

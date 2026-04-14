@@ -4,6 +4,8 @@ import {
   View, Text, StyleSheet, TouchableOpacity, TextInput, 
   ScrollView, Image, Alert, ActivityIndicator 
 } from 'react-native';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,7 +19,7 @@ export default function UploadRemateScreen({ navigation }: any) {
 
   const pickVideo = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      mediaTypes: ['videos'], // ✅ El formato nuevo y correcto
       allowsEditing: true,
       quality: 1,
     });
@@ -27,18 +29,43 @@ export default function UploadRemateScreen({ navigation }: any) {
     }
   };
 
-  const handleCreateAuction = () => {
+  const handleCreateAuction = async () => {
     if (!video || !title || !basePrice) {
       Alert.alert("Faltan datos", "Por favor completa todos los campos y sube un video.");
       return;
     }
+    
     setLoading(true);
-    // Simulación de creación
-    setTimeout(() => {
-      setLoading(false);
+    
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const formData = new FormData();
+      
+      const filename = video.split('/').pop() || `remate-${Date.now()}.mp4`;
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `video/${match[1]}` : `video/mp4`;
+      
+      formData.append('video', { uri: video, name: filename, type } as any);
+      formData.append('title', title);
+      formData.append('basePrice', basePrice);
+
+      // Enviamos el video al nuevo endpoint de Remates
+      await axios.post(`https://viralshop-xr9v.onrender.com/videos/remate`, formData, {
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}` 
+        },
+      });
+
       Alert.alert("¡Remate Creado!", "Tu producto estará activo por las próximas 24 horas.");
       navigation.navigate('MainTabs', { screen: 'Remates' });
-    }, 2000);
+
+    } catch (error: any) {
+      console.error("Error al subir remate:", error.response?.data || error.message);
+      Alert.alert("Error", "Hubo un problema al subir tu remate. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

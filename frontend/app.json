@@ -2,7 +2,7 @@
   "expo": {
     "name": "ViralShop",
     "slug": "frontend",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,7 +24,12 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.diegogc.viralshop",
       "googleServicesFile": "./google-services.json",
-      "navigationBar": { "backgroundColor": "#000000" }
+      "navigationBar": { "backgroundColor": "#000000" },
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBcQzjLsKevQTh6PtM-YjdJ_npz02h6dQE"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

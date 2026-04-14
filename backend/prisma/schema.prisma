@@ -33,6 +33,7 @@ model User {
   // Relaciones de Mensajería
   chats     Chat[]    @relation("ChatParticipants")
   messages  Message[]
+  bids      Bid[]     @relation("UserBids")
 }
 
 // Para que el usuario elija qué le gusta al iniciar
@@ -59,11 +60,16 @@ model Video {
   category     String?
   subCategory  String?
   latitude     Float?
-  longitude    Float?
-  
+  longitude    Float? 
   likes        Like[]
   comments     Comment[]
   savedBy      SavedVideo[]
+
+  // 👇 NUEVOS CAMPOS PARA REMATES 👇
+  isAuction     Boolean   @default(false)
+  auctionEndsAt DateTime?
+  isAuctionClosed Boolean   @default(false) // <-- ¡Añadimos esto!
+  bids          Bid[]     @relation("VideoBids")
 }
 
 model Like {
@@ -122,4 +128,19 @@ model Message {
   
   senderId  String
   sender    User     @relation(fields: [senderId], references: [id])
+}
+
+// 👇 NUEVO MODELO PARA EL SISTEMA DE REMATES 👇
+model Bid {
+  id        String   @id @default(cuid())
+  amount    Float    // Cantidad de dinero de la oferta
+  createdAt DateTime @default(now())
+  
+  // Quién hizo la oferta
+  userId    String
+  user      User     @relation("UserBids", fields: [userId], references: [id])
+  
+  // A qué producto (Remate) se le hizo la oferta
+  videoId   String
+  video     Video    @relation("VideoBids", fields: [videoId], references: [id])
 }

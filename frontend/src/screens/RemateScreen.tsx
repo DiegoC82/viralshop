@@ -1,54 +1,29 @@
 // frontend/src/screens/RemateScreen.tsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Dimensions, 
-  FlatList, 
-  Image, 
-  TouchableOpacity, 
-  Animated 
+  View, Text, StyleSheet, Dimensions, FlatList, 
+  Image, TouchableOpacity, Animated, ActivityIndicator, Alert 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 import { COLORS } from '../theme/colors';
 
 const { width, height } = Dimensions.get('window');
-
-// 💡 Datos de prueba con un guiño local
-const DUMMY_AUCTIONS = [
-  {
-    id: '1',
-    title: 'PlayStation 5 - Poco uso',
-    seller: '@gamer_rafael',
-    location: 'San Rafael, Mza.',
-    currentBid: 450000,
-    topBidder: 'diego_89',
-    timeLeft: '04:12:59',
-    image: 'https://images.unsplash.com/photo-1606813907291-d86efa9b90cd?q=80&w=800&auto=format&fit=crop',
-    bidsCount: 24
-  },
-  {
-    id: '2',
-    title: 'iPhone 13 Pro Max 256GB',
-    seller: '@tech_store',
-    location: 'Centro',
-    currentBid: 850000,
-    topBidder: 'maria.l',
-    timeLeft: '00:45:12',
-    image: 'https://images.unsplash.com/photo-1632661674596-df8be070a5c5?q=80&w=800&auto=format&fit=crop',
-    bidsCount: 56
-  }
-];
+const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
 export default function RemateScreen() {
   const insets = useSafeAreaInsets();
-  const [auctions, setAuctions] = useState(DUMMY_AUCTIONS);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  
+  const [auctions, setAuctions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tick, setTick] = useState(0); // Para forzar el refresco del cronómetro
 
-  // Animación de latido para el precio actual (genera urgencia)
+  // 1. Animación de latido para el precio actual (genera urgencia)
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -56,95 +31,176 @@ export default function RemateScreen() {
         Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true })
       ])
     ).start();
+    
+    // Reloj interno que actualiza la pantalla cada segundo para los cronómetros
+    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
   }, []);
 
-  const handleQuickBid = (id: string, amount: number) => {
-    // Aquí iría la lógica del backend para pujar
-    const updatedAuctions = auctions.map(auc => {
-      if (auc.id === id) {
-        return { ...auc, currentBid: auc.currentBid + amount, topBidder: 'tú' };
-      }
-      return auc;
-    });
-    setAuctions(updatedAuctions);
+  // 2. Traer Remates Reales del Backend
+  const fetchAuctions = async () => {
+    try {
+      const response = await axios.get(`${BACKEND_URL}/videos/remates`);
+      setAuctions(response.data);
+    } catch (error) {
+      console.error("Error al cargar remates:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const renderAuctionItem = ({ item }: { item: typeof DUMMY_AUCTIONS[0] }) => (
-    <View style={[styles.auctionContainer, { height: height }]}>
-      {/* IMAGEN DE FONDO COMPLETA */}
-      <Image 
-        source={{ uri: item.image }} 
-        style={[StyleSheet.absoluteFillObject, { backgroundColor: '#111' }]} 
-        resizeMode="cover"
-      />
-      
-      {/* DEGRADADO OSCURO PARA QUE SE LEA EL TEXTO */}
-      <LinearGradient
-        colors={['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.9)']}
-        style={StyleSheet.absoluteFillObject}
-      />
+  useFocusEffect(
+    useCallback(() => {
+      fetchAuctions();
+    }, [])
+  );
 
-      {/* CABECERA: TIEMPO RESTANTE (Fijo arriba) */}
-      <View style={[styles.timerBadge, { top: insets.top + 20 }]}>
-        <Ionicons name="time-outline" size={18} color="#FFF" />
-        <Text style={styles.timerText}>Termina en {item.timeLeft}</Text>
-      </View>
+  // 3. Lógica de Pujas Reales (Bids)
+  const handleQuickBid = async (videoId: string, increment: number, currentPrice: number) => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        Alert.alert("¡Modo Invitado!", "Debes iniciar sesión para poder pujar en los remates.");
+        return;
+      }
 
-      {/* CONTENIDO PRINCIPAL (Abajo) */}
-      <View style={styles.contentBottom}>
+      const newOffer = currentPrice + increment;
+
+      // Actualizamos la UI al instante (Optimistic Update) para que sea rápido
+      setAuctions(prev => prev.map(auc => {
+        if (auc.id === videoId) {
+          return { 
+            ...auc, 
+            productPrice: newOffer, 
+            bids: [{ user: { username: 'Tú' } }, ...(auc.bids || [])] // Te ponemos como top bidder temporal
+          };
+        }
+        return auc;
+      }));
+
+      // Enviamos la oferta al backend
+      await axios.post(`${BACKEND_URL}/videos/${videoId}/bid`, { amount: newOffer }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+    } catch (error: any) {
+      Alert.alert("Error", error.response?.data?.message || "No se pudo realizar la oferta.");
+      fetchAuctions(); // Si falla, recargamos los datos reales
+    }
+  };
+
+  // 4. Utilidades visuales
+  const getThumbnail = (videoUrl: string) => {
+    if (videoUrl && videoUrl.includes('mux.com')) {
+      const parts = videoUrl.split('/');
+      const playbackId = parts[parts.length - 1].split('.')[0];
+      return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=1`;
+    }
+    return 'https://via.placeholder.com/150';
+  };
+
+  const getTimeLeft = (endDateString: string) => {
+    const end = new Date(endDateString).getTime();
+    const now = new Date().getTime();
+    const distance = end - now;
+
+    if (distance < 0) return "Finalizado";
+
+    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const renderAuctionItem = ({ item }: { item: any }) => {
+    const topBidder = item.bids && item.bids.length > 0 ? item.bids[0].user.username : 'Sé el primero';
+    const totalBids = item.bids ? item.bids.length : 0;
+
+    return (
+      <View style={[styles.auctionContainer, { height: height }]}>
+        {/* IMAGEN DE FONDO (Miniatura de Mux) */}
+        <Image 
+          source={{ uri: getThumbnail(item.videoUrl) }} 
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: '#111' }]} 
+          resizeMode="cover"
+        />
         
-        {/* Vendedor y Título */}
-        <View style={styles.sellerInfo}>
-          <View style={styles.avatarMock}><Ionicons name="person" size={16} color="#FFF" /></View>
-          <Text style={styles.sellerName}>{item.seller}</Text>
-          <Text style={styles.locationTag}>📍 {item.location}</Text>
-        </View>
-        <Text style={styles.productTitle}>{item.title}</Text>
+        {/* DEGRADADO OSCURO */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.9)']}
+          style={StyleSheet.absoluteFillObject}
+        />
 
-        {/* CARTA CENTRAL DE SUBASTA */}
-        <View style={styles.biddingCard}>
-          <Text style={styles.biddingSubtitle}>Puja más alta ({item.bidsCount} ofertas):</Text>
+        {/* CABECERA: TIEMPO RESTANTE */}
+        <View style={[styles.timerBadge, { top: insets.top + 20 }]}>
+          <Ionicons name="time-outline" size={18} color="#FFF" />
+          <Text style={styles.timerText}>{getTimeLeft(item.auctionEndsAt)}</Text>
+        </View>
+
+        {/* CONTENIDO PRINCIPAL */}
+        <View style={styles.contentBottom}>
           
-          <View style={styles.priceRow}>
-            <Animated.Text style={[styles.currentPrice, { transform: [{ scale: pulseAnim }] }]}>
-              ${item.currentBid.toLocaleString('es-AR')}
-            </Animated.Text>
-            <View style={styles.topBidderBadge}>
-              <Ionicons name="trophy" size={12} color="#FFD700" />
-              <Text style={styles.topBidderText}> {item.topBidder}</Text>
+          <View style={styles.sellerInfo}>
+            <View style={styles.avatarMock}><Ionicons name="person" size={16} color="#FFF" /></View>
+            <Text style={styles.sellerName}>@{item.user?.username}</Text>
+            <Text style={styles.locationTag}>📍 Envío Nacional</Text>
+          </View>
+          <Text style={styles.productTitle}>{item.productName}</Text>
+
+          {/* CARTA DE SUBASTA */}
+          <View style={styles.biddingCard}>
+            <Text style={styles.biddingSubtitle}>Puja más alta ({totalBids} ofertas):</Text>
+            
+            <View style={styles.priceRow}>
+              <Animated.Text style={[styles.currentPrice, { transform: [{ scale: pulseAnim }] }]}>
+                ${item.productPrice.toLocaleString('es-AR')}
+              </Animated.Text>
+              <View style={styles.topBidderBadge}>
+                <Ionicons name="trophy" size={12} color="#FFD700" />
+                <Text style={styles.topBidderText}> {topBidder}</Text>
+              </View>
+            </View>
+
+            {/* BOTONES ADICTIVOS DE PUJA RÁPIDA */}
+            <Text style={styles.quickBidLabel}>Superar oferta rápidamente:</Text>
+            <View style={styles.quickBidsRow}>
+              <TouchableOpacity style={styles.quickBidBtn} onPress={() => handleQuickBid(item.id, 5000, item.productPrice)}>
+                <Text style={styles.quickBidBtnText}>+ $5k</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickBidBtn} onPress={() => handleQuickBid(item.id, 10000, item.productPrice)}>
+                <Text style={styles.quickBidBtnText}>+ $10k</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.quickBidBtnPro} onPress={() => handleQuickBid(item.id, 25000, item.productPrice)}>
+                <Text style={styles.quickBidBtnProText}>+ $25k</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
-          {/* BOTONES ADICTIVOS DE PUJA RÁPIDA */}
-          <Text style={styles.quickBidLabel}>Superar oferta rápidamente:</Text>
-          <View style={styles.quickBidsRow}>
-            <TouchableOpacity style={styles.quickBidBtn} onPress={() => handleQuickBid(item.id, 5000)}>
-              <Text style={styles.quickBidBtnText}>+ $5k</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickBidBtn} onPress={() => handleQuickBid(item.id, 10000)}>
-              <Text style={styles.quickBidBtnText}>+ $10k</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickBidBtnPro} onPress={() => handleQuickBid(item.id, 25000)}>
-              <Text style={styles.quickBidBtnProText}>+ $25k</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
+        {/* BOTONES LATERALES */}
+        <View style={styles.sideButtons}>
+          <TouchableOpacity style={styles.sideBtn}>
+            <Ionicons name="flame" size={32} color={COLORS.accent} />
+            <Text style={styles.sideBtnText}>Hot</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.sideBtn}>
+            <Ionicons name="share-social" size={28} color="#FFF" />
+            <Text style={styles.sideBtnText}>Compartir</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+    );
+  };
 
-      {/* BOTONES LATERALES ESTILO TIKTOK */}
-      <View style={styles.sideButtons}>
-        <TouchableOpacity style={styles.sideBtn}>
-          <Ionicons name="flame" size={32} color={COLORS.accent} />
-          <Text style={styles.sideBtnText}>Hot</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.sideBtn}>
-          <Ionicons name="share-social" size={28} color="#FFF" />
-          <Text style={styles.sideBtnText}>Compartir</Text>
-        </TouchableOpacity>
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.accent} />
       </View>
-    </View>
-  );
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -152,10 +208,23 @@ export default function RemateScreen() {
         data={auctions}
         keyExtractor={(item) => item.id}
         renderItem={renderAuctionItem}
-        pagingEnabled // Esto hace el efecto "Swipe" de a una pantalla entera
+        pagingEnabled 
         showsVerticalScrollIndicator={false}
         snapToAlignment="start"
         decelerationRate="fast"
+        // 👇 El arreglo del scroll para que no se corte 👇
+        snapToInterval={height} 
+        getItemLayout={(data, index) => ({
+          length: height,
+          offset: height * index,
+          index,
+        })}
+        ListEmptyComponent={
+          <View style={{ height, justifyContent: 'center', alignItems: 'center' }}>
+            <Ionicons name="hammer-outline" size={60} color="#333" />
+            <Text style={{ color: '#888', marginTop: 10 }}>No hay remates activos ahora.</Text>
+          </View>
+        }
       />
     </View>
   );
