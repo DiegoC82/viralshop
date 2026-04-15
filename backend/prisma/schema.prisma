@@ -35,6 +35,8 @@ model User {
   chats     Chat[]    @relation("ChatParticipants")
   messages  Message[]
   bids      Bid[]     @relation("UserBids")
+  followers Follows[] @relation("following")
+  following Follows[] @relation("follower")
 }
 
 // Para que el usuario elija qué le gusta al iniciar
@@ -144,4 +146,13 @@ model Bid {
   // A qué producto (Remate) se le hizo la oferta
   videoId   String
   video     Video    @relation("VideoBids", fields: [videoId], references: [id])
+}
+
+// Y agrega este nuevo modelo al final de tu archivo schema.prisma
+model Follows {
+  followerId  String
+  followingId String
+  follower    User @relation("follower", fields: [followerId], references: [id])
+  following   User @relation("following", fields: [followingId], references: [id])
+  @@id([followerId, followingId])
 }

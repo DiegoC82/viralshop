@@ -32,6 +32,67 @@ export class UsersService {
     return user;
   }
 
+  // 👇 Trae el perfil público de un usuario y verifica si lo estamos siguiendo
+  async getPublicProfile(targetUserId: string, currentUserId?: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        avatarUrl: true,
+        bio: true,
+        isVerified: true,
+        videos: { 
+          where: { isAuction: false }, // Ocultamos los remates del perfil normal
+          orderBy: { createdAt: 'desc' } 
+        },
+        _count: {
+          select: { followers: true, following: true, likes: true }
+        }
+      }
+    });
+
+    if (!user) throw new Error('Usuario no encontrado');
+
+    let isFollowing = false;
+    if (currentUserId) {
+      const follow = await this.prisma.follows.findUnique({
+        where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } }
+      });
+      isFollowing = !!follow;
+    }
+
+    return {
+      ...user,
+      followersCount: user._count.followers,
+      followingCount: user._count.following,
+      likesCount: user._count.likes,
+      isFollowing
+    };
+  }
+
+  // 👇 Activa o desactiva el "Seguir"
+  async toggleFollow(targetUserId: string, currentUserId: string) {
+    if (targetUserId === currentUserId) throw new Error('No puedes seguirte a ti mismo');
+
+    const existingFollow = await this.prisma.follows.findUnique({
+      where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } }
+    });
+
+    if (existingFollow) {
+      await this.prisma.follows.delete({
+        where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } }
+      });
+      return { following: false };
+    } else {
+      await this.prisma.follows.create({
+        data: { followerId: currentUserId, followingId: targetUserId }
+      });
+      return { following: true };
+    }
+  }
+
   async updateAvatar(userId: string, avatarUrl: string) {
     return this.prisma.user.update({
       where: { id: userId },

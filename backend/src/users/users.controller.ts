@@ -1,4 +1,4 @@
-import { Controller, Get, Post, UseGuards, Request, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Param, Req, UseGuards, Request, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer'; // 👇 Cambiamos diskStorage por memoryStorage
 import { UsersService } from './users.service';
@@ -32,5 +32,20 @@ export class UsersController {
     await this.usersService.updateAvatar(userId, avatarUrl);
     
     return { message: 'Foto de perfil actualizada', avatarUrl };
+  }
+
+  // 👇 RUTA: Obtener Perfil Público
+  @Get(':id/public')
+  async getPublicProfile(@Param('id') id: string, @Req() req: any) {
+    // Si el usuario está logueado, le pasamos su ID para saber si ya sigue a esta persona
+    const currentUserId = req.user?.id; 
+    return this.usersService.getPublicProfile(id, currentUserId);
+  }
+
+  // 👇 RUTA: Seguir / Dejar de seguir (Requiere estar logueado)
+  @UseGuards(JwtAuthGuard) // 👈 Usa el nombre del Guard que tengas en tu proyecto para proteger rutas
+  @Post(':id/follow')
+  async toggleFollow(@Param('id') targetUserId: string, @Req() req: any) {
+    return this.usersService.toggleFollow(targetUserId, req.user.id);
   }
 }
