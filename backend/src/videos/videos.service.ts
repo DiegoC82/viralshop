@@ -20,7 +20,11 @@ export class VideosService {
   }
 
   async getFeed() {
-    return this.prisma.video.findMany({ include: { user: true }, orderBy: { createdAt: 'desc' } });
+    return this.prisma.video.findMany({ 
+      where: { isAuction: false }, // 👈 ESTO ES LA MAGIA: Oculta los remates del feed
+      include: { user: true }, 
+      orderBy: { createdAt: 'desc' } 
+    });
   }
 
   async toggleLike(videoId: string, userId: string) {
