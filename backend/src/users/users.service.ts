@@ -100,6 +100,14 @@ export class UsersService {
     });
   }
 
+  // 👇 Función para guardar el token del celular y poder enviarle notificaciones
+  async updatePushToken(userId: string, pushToken: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { pushToken },
+    });
+  }
+
   // 👇 NUEVA FUNCIÓN: Sube la imagen directamente a Cloudinary 👇
   async uploadImageToCloudinary(fileBuffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {

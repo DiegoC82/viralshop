@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Req, UseGuards, Request, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Post, Param, Req, UseGuards, Request, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer'; // 👇 Cambiamos diskStorage por memoryStorage
 import { UsersService } from './users.service';
@@ -47,5 +47,12 @@ export class UsersController {
   @Post(':id/follow')
   async toggleFollow(@Param('id') targetUserId: string, @Req() req: any) {
     return this.usersService.toggleFollow(targetUserId, req.user.id);
+  }
+
+  // 👇 RUTA: Guardar el token de notificaciones push
+  @UseGuards(JwtAuthGuard) // (Usa el Guard de autenticación que tengas en tu proyecto)
+  @Patch('update-push-token')
+  async updatePushToken(@Req() req: any, @Body('pushToken') pushToken: string) {
+    return this.usersService.updatePushToken(req.user.id, pushToken);
   }
 }
