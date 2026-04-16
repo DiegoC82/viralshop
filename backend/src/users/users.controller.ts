@@ -42,17 +42,17 @@ export class UsersController {
     return this.usersService.getPublicProfile(id, currentUserId);
   }
 
-  // 👇 RUTA: Seguir / Dejar de seguir (Requiere estar logueado)
-  @UseGuards(JwtAuthGuard) // 👈 Usa el nombre del Guard que tengas en tu proyecto para proteger rutas
+  // 👇 RUTA: Seguir / Dejar de seguir (Cambiamos req.user.id por req.user.sub)
+  @UseGuards(JwtAuthGuard)
   @Post(':id/follow')
   async toggleFollow(@Param('id') targetUserId: string, @Req() req: any) {
-    return this.usersService.toggleFollow(targetUserId, req.user.id);
+    return this.usersService.toggleFollow(targetUserId, req.user.sub);
   }
 
-  // 👇 RUTA: Guardar el token de notificaciones push
-  @UseGuards(JwtAuthGuard) // (Usa el Guard de autenticación que tengas en tu proyecto)
+  // 👇 RUTA: Guardar el token de notificaciones push (Cambiamos req.user.id por req.user.sub)
+  @UseGuards(JwtAuthGuard)
   @Patch('update-push-token')
   async updatePushToken(@Req() req: any, @Body('pushToken') pushToken: string) {
-    return this.usersService.updatePushToken(req.user.id, pushToken);
+    return this.usersService.updatePushToken(req.user.sub, pushToken);
   }
 }

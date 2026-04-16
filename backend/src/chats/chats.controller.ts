@@ -86,4 +86,34 @@ export class ChatsController {
 
     return newMessage;
   }
+
+  // ==========================================
+  // NUEVO: INICIAR O BUSCAR UN CHAT EXISTENTE
+  // ==========================================
+  @UseGuards(JwtAuthGuard)
+  @Post('start/:userId')
+  async findOrCreateChat(@Param('userId') targetUserId: string, @Request() req) {
+    const currentUserId = req.user.sub;
+
+    // 1. Buscamos si ya existe un chat entre estas dos personas
+    const existingChat = await this.prisma.chat.findFirst({
+      where: {
+        AND: [
+          { participants: { some: { id: currentUserId } } },
+          { participants: { some: { id: targetUserId } } }
+        ]
+      }
+    });
+
+    if (existingChat) return existingChat;
+
+    // 2. Si no existe, creamos una sala de chat nueva para ellos
+    return this.prisma.chat.create({
+      data: {
+        participants: {
+          connect: [{ id: currentUserId }, { id: targetUserId }]
+        }
+      }
+    });
+  }
 }
