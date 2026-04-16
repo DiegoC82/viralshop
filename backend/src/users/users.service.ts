@@ -22,14 +22,55 @@ export class UsersService {
         username: true, 
         name: true, 
         email: true, 
-        avatarUrl: true, 
+        avatarUrl: true,
+        bio: true,           // Traemos la biografía
+        isVerified: true,    // Traemos si está verificado
         createdAt: true, 
-        videos: { include: { user: true } },
+        videos: { 
+          include: { user: true, bids: true }, // 👈 Incluimos 'bids' para calcular las ventas
+          orderBy: { createdAt: 'desc' }
+        },
         likes: { include: { video: { include: { user: true } } }, orderBy: { createdAt: 'desc' } },
-        savedVideos: { include: { video: { include: { user: true } } }, orderBy: { createdAt: 'desc' } }
+        savedVideos: { include: { video: { include: { user: true } } }, orderBy: { createdAt: 'desc' } },
+        _count: {
+          select: { followers: true, following: true, likes: true } // 👈 Traemos los contadores reales
+        }
       },
     });
-    return user;
+
+    if (!user) return null;
+
+    // 👇 CALCULAMOS LAS MÉTRICAS REALES 👇
+    let totalViews = 0;
+    let totalSales = 0;
+    let activeAuctionsCount = 0;
+
+    user.videos.forEach(video => {
+      totalViews += video.viewCount || 0; // Sumamos reproducciones
+      
+      if (video.isAuction) {
+        if (video.isAuctionClosed && video.bids.length > 0) {
+          // Si el remate se cerró y hubo ofertas, sumamos la oferta más alta (ganadora) a las ventas
+          const highestBid = Math.max(...video.bids.map(b => b.amount));
+          totalSales += highestBid;
+        } else if (!video.isAuctionClosed) {
+          // Si el remate no se ha cerrado, lo contamos como "Activo"
+          activeAuctionsCount += 1;
+        }
+      }
+    });
+
+    return {
+      ...user,
+      followersCount: user._count.followers,
+      followingCount: user._count.following,
+      likesCount: user._count.likes,
+      metrics: {
+        totalViews,
+        totalSales,
+        activeAuctionsCount
+      }
+    };
   }
 
   // 👇 Trae el perfil público de un usuario y verifica si lo estamos siguiendo
