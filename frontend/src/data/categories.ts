@@ -3,7 +3,7 @@
 export const CATEGORIES_DATA = [
   { id: 'all', name: 'Todos', subcategories: [] },
   { 
-    id: 'tech', name: 'Tecnología', 
+    id: 'tech', name: 'Tecnología', icon: 'hardware-chip-outline',
     subcategories: [
       { id: 'tech_all', name: 'Todo Tecnología', icon: 'hardware-chip-outline' },
       { id: 'phones', name: 'Celulares', icon: 'phone-portrait-outline' },
@@ -14,7 +14,7 @@ export const CATEGORIES_DATA = [
     ] 
   },
   { 
-    id: 'fashion', name: 'Moda', 
+    id: 'fashion', name: 'Moda', icon: 'shirt-outline',
     subcategories: [
       { id: 'fashion_all', name: 'Todo Moda', icon: 'pricetag-outline' },
       { id: 'clothes', name: 'Ropa', icon: 'shirt-outline' },
@@ -24,7 +24,7 @@ export const CATEGORIES_DATA = [
     ] 
   },
   { 
-    id: 'home', name: 'Hogar y Muebles', 
+    id: 'home', name: 'Hogar y Muebles', icon: 'home-outline',
     subcategories: [
       { id: 'home_all', name: 'Todo Hogar', icon: 'home-outline' },
       { id: 'furniture', name: 'Muebles', icon: 'bed-outline' },
@@ -34,7 +34,7 @@ export const CATEGORIES_DATA = [
     ] 
   },
   { 
-    id: 'services', name: 'Servicios', 
+    id: 'services', name: 'Servicios', icon: 'briefcase-outline',
     subcategories: [
       { id: 'services_all', name: 'Todo Servicios', icon: 'briefcase-outline' },
       { id: 'home_repairs', name: 'Reparaciones del Hogar', icon: 'construct-outline' },
@@ -45,7 +45,7 @@ export const CATEGORIES_DATA = [
     ] 
   },
   { 
-    id: 'food_and_drinks', name: 'Comida y Bebidas', 
+    id: 'food_and_drinks', name: 'Comida y Bebidas', icon: 'restaurant-outline',
     subcategories: [
       { id: 'food_all', name: 'Todo Comida y Bebidas', icon: 'cart-outline' },
       { id: 'food', name: 'Alimentos', icon: 'restaurant-outline' },
@@ -54,7 +54,7 @@ export const CATEGORIES_DATA = [
     ] 
   },
   { 
-    id: 'sports', name: 'Deportes', 
+    id: 'sports', name: 'Deportes', icon: 'football-outline',
     subcategories: [
       { id: 'sports_all', name: 'Todo Deportes', icon: 'football-outline' },
       { id: 'fitness', name: 'Fitness y Gym', icon: 'barbell-outline' },
@@ -63,7 +63,7 @@ export const CATEGORIES_DATA = [
     ] 
   },
   { 
-    id: 'beauty', name: 'Belleza y Salud', 
+    id: 'beauty', name: 'Belleza y Salud', icon: 'sparkles-outline',
     subcategories: [
       { id: 'beauty_all', name: 'Todo Belleza', icon: 'sparkles-outline' },
       { id: 'makeup', name: 'Maquillaje', icon: 'color-wand-outline' },
@@ -73,7 +73,7 @@ export const CATEGORIES_DATA = [
     ] 
   },
   { 
-    id: 'vehicles', name: 'Vehículos', 
+    id: 'vehicles', name: 'Vehículos', icon: 'car-outline',
     subcategories: [
       { id: 'vehicles_all', name: 'Todo Vehículos', icon: 'car-outline' },
       { id: 'auto_parts', name: 'Accesorios Autos', icon: 'build-outline' },
@@ -82,7 +82,7 @@ export const CATEGORIES_DATA = [
     ] 
   },
   { 
-    id: 'tools', name: 'Herramientas', 
+    id: 'tools', name: 'Herramientas', icon: 'hammer-outline',
     subcategories: [
       { id: 'tools_all', name: 'Todo Herramientas', icon: 'hammer-outline' },
       { id: 'electric', name: 'Eléctricas', icon: 'flash-outline' },
@@ -91,7 +91,7 @@ export const CATEGORIES_DATA = [
   }
 ];
 
-// 👇 Exportamos una lista simple solo con los nombres para la pantalla de Intereses (sacando la opción "Todos")
+// 👇 Exportamos una lista simple solo con los nombres para la pantalla de Intereses
 export const SIMPLE_CATEGORIES = CATEGORIES_DATA
   .filter(cat => cat.id !== 'all')
   .map(cat => cat.name);

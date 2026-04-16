@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CATEGORIES_DATA } from '../data/categories';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,7 +32,7 @@ export default function ProfileScreen({ navigation, route }: any) {
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
-  const [activeTab, setActiveTab] = useState<'uploaded' | 'liked' | 'saved' | 'metrics'>('uploaded');
+  const [activeTab, setActiveTab] = useState<'uploaded' | 'liked' | 'remates' | 'metrics'>('uploaded');
   const [menuVisible, setMenuVisible] = useState(false);
   
   // 👇 1. AGREGAR ESTOS ESTADOS Y FUNCIONES NUEVAS 👇
@@ -173,7 +174,7 @@ export default function ProfileScreen({ navigation, route }: any) {
     if (!profile) return [];
     if (activeTab === 'uploaded') return profile.videos || [];
     if (activeTab === 'liked') return (profile.likes || []).map((l: any) => l.video);
-    if (activeTab === 'saved') return (profile.savedVideos || []).map((s: any) => s.video);
+    if (activeTab === 'remates') return (profile.videos || []).filter((v: any) => v.isAuction);
     // 👇 SI ES MÉTRICAS, DEVOLVEMOS UN ARRAY CON UN SOLO OBJETO 👇
     if (activeTab === 'metrics') return [{ id: 'metrics-view' }]; 
     return [];
@@ -400,10 +401,10 @@ export default function ProfileScreen({ navigation, route }: any) {
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.tab, activeTab === 'saved' && styles.activeTab]} 
-                onPress={() => setTimeout(() => setActiveTab('saved'), 0)}
+                style={[styles.tab, activeTab === 'remates' && styles.activeTab]} 
+                onPress={() => setTimeout(() => setActiveTab('remates'), 0)}
               >
-                <Ionicons name="bookmark-outline" size={24} color={activeTab === 'saved' ? COLORS.text : COLORS.textMuted} />
+                <Ionicons name="hammer-outline" size={24} color={activeTab === 'remates' ? COLORS.text : COLORS.textMuted} />
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -418,23 +419,37 @@ export default function ProfileScreen({ navigation, route }: any) {
         renderItem={({ item }) => {
           // 👇 1. SI ESTAMOS EN LA PESTAÑA DE MÉTRICAS, DIBUJAMOS EL PANEL 👇
           if (activeTab === 'metrics') {
+            // Extraemos las métricas reales del perfil
+            const metrics = profile?.metrics || { totalViews: 0, totalSales: 0, activeAuctionsCount: 0 };
+            
+            // Formateamos las vistas para que se vean geniales (Ej: 1500 se convierte en 1.5k)
+            const formattedViews = metrics.totalViews >= 1000 
+              ? (metrics.totalViews / 1000).toFixed(1) + 'k' 
+              : metrics.totalViews;
+
             return (
               <View style={{ width: width, padding: 20 }}>
                 <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: 'bold', marginBottom: 15 }}>Resumen de cuenta</Text>
                 
                 <View style={{ backgroundColor: COLORS.surface, padding: 15, borderRadius: 12, marginBottom: 10 }}>
                   <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>Visualizaciones totales</Text>
-                  <Text style={{ color: COLORS.accent, fontSize: 24, fontWeight: 'bold' }}>12.5k</Text>
+                  <Text style={{ color: COLORS.accent, fontSize: 24, fontWeight: 'bold' }}>
+                    {formattedViews}
+                  </Text>
                 </View>
 
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                   <View style={{ flex: 1, backgroundColor: COLORS.surface, padding: 15, borderRadius: 12 }}>
                     <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>Ventas ARS</Text>
-                    <Text style={{ color: '#4CD964', fontSize: 18, fontWeight: 'bold' }}>$85.200</Text>
+                    <Text style={{ color: '#4CD964', fontSize: 18, fontWeight: 'bold' }}>
+                      ${metrics.totalSales.toLocaleString('es-AR')}
+                    </Text>
                   </View>
                   <View style={{ flex: 1, backgroundColor: COLORS.surface, padding: 15, borderRadius: 12 }}>
-                    <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>Pujas activas</Text>
-                    <Text style={{ color: COLORS.accent, fontSize: 18, fontWeight: 'bold' }}>3</Text>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>Remates activos</Text>
+                    <Text style={{ color: COLORS.accent, fontSize: 18, fontWeight: 'bold' }}>
+                      {metrics.activeAuctionsCount}
+                    </Text>
                   </View>
                 </View>
 
@@ -449,12 +464,35 @@ export default function ProfileScreen({ navigation, route }: any) {
           }
 
           // 👇 2. SI NO ES MÉTRICAS, SEGUIMOS DIBUJANDO LOS VIDEOS NORMALES 👇
+          // 👇 NUEVA LÓGICA PARA MINIATURAS DE VIDEO 👇
+          const catIcon = CATEGORIES_DATA.find(c => c.name === item.category)?.icon || 'cube-outline';
+
           return (
             <TouchableOpacity style={styles.videoThumbnailContainer} onPress={() => navigation.navigate('SingleVideo', { video: item })}>
               <Image source={{ uri: getThumbnail(item.videoUrl) }} style={styles.videoThumbnail} />
-              <View style={styles.viewsContainer}>
-                <Ionicons name="play-outline" size={12} color="#FFF" />
-                <Text style={styles.viewsText}>{item.viewCount || 0}</Text>
+              
+              {/* Ícono de Categoría (Arriba-Derecha) */}
+              <View style={styles.catIconBadge}>
+                <Ionicons name={catIcon as any} size={14} color="#FFF" />
+              </View>
+
+              {/* Detalle/Descripción corta (Sobre el precio) */}
+              <View style={styles.videoDetailOverlay}>
+                <Text style={styles.videoDetailText} numberOfLines={1}>{item.description}</Text>
+              </View>
+
+              {/* Fila inferior: Precio y Vistas */}
+              <View style={styles.bottomDataRow}>
+                {item.productPrice ? (
+                  <View style={styles.miniPriceTag}>
+                    <Text style={styles.miniPriceText}>${item.productPrice}</Text>
+                  </View>
+                ) : <View />}
+
+                <View style={styles.miniViewsContainer}>
+                  <Ionicons name="play-outline" size={10} color="#FFF" />
+                  <Text style={styles.viewsText}>{item.viewCount || 0}</Text>
+                </View>
               </View>
             </TouchableOpacity>
           );
@@ -599,6 +637,28 @@ const styles = StyleSheet.create({
   viewsContainer: { position: 'absolute', bottom: 5, left: 5, flexDirection: 'row', alignItems: 'center' },
   viewsText: { color: '#FFF', fontSize: 12, marginLeft: 3, fontWeight: 'bold', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 },
   emptyText: { color: COLORS.textMuted, textAlign: 'center', marginTop: 50, fontSize: 16 },
+
+  // 👇 ESTILOS PARA MINIATURAS ENRIQUECIDAS 👇
+  catIconBadge: { 
+    position: 'absolute', top: 5, right: 5, 
+    backgroundColor: 'rgba(0,0,0,0.4)', padding: 4, borderRadius: 10 
+  },
+  videoDetailOverlay: { 
+    position: 'absolute', bottom: 25, left: 5, right: 5 
+  },
+  videoDetailText: { 
+    color: '#FFF', fontSize: 10, fontWeight: '500', 
+    textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 
+  },
+  bottomDataRow: { 
+    position: 'absolute', bottom: 5, left: 5, right: 5, 
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' 
+  },
+  miniPriceTag: { 
+    backgroundColor: COLORS.accent, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4 
+  },
+  miniPriceText: { color: '#000', fontSize: 10, fontWeight: 'bold' },
+  miniViewsContainer: { flexDirection: 'row', alignItems: 'center' },
 
   // Modal / Menu Hamburguesa
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

@@ -1,32 +1,31 @@
 // frontend/src/screens/FeedScreen.tsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { StyleSheet, Text, View, FlatList, Dimensions, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Alert, Share, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, Text, View, FlatList, Dimensions, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Alert, Share, Modal, TextInput, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useFocusEffect, useNavigation, useIsFocused } from '@react-navigation/native'; 
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { COLORS } from '../theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// 👇 1. IMPORTAMOS LAS HERRAMIENTAS DE NOTIFICACIONES 👇
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 
 const { height, width } = Dimensions.get('window');
 const BASE_URL = 'https://viralshop-xr9v.onrender.com';
 
-// 👇 2. CONFIGURACIÓN DE NOTIFICACIONES EN PRIMER PLANO 👇
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
-    shouldShowBanner: true, // 👈 ¡Agregamos esto!
-    shouldShowList: true,   // 👈 ¡Y esto!
+    shouldShowBanner: true, 
+    shouldShowList: true,   
   }),
 });
 
-// 👇 3. LA FUNCIÓN QUE PIDE PERMISO Y GUARDA EL TOKEN 👇
 async function registerForPushNotificationsAsync() {
   let token;
 
@@ -44,11 +43,8 @@ async function registerForPushNotificationsAsync() {
       return;
     }
 
-    // Genera el token del celular
     token = (await Notifications.getExpoPushTokenAsync()).data;
-    console.log("Token generado:", token);
 
-    // Lo envía al backend
     try {
       const userToken = await AsyncStorage.getItem('userToken');
       if (userToken) {
@@ -56,13 +52,10 @@ async function registerForPushNotificationsAsync() {
           { pushToken: token },
           { headers: { Authorization: `Bearer ${userToken}` } }
         );
-        console.log("Token guardado en el servidor con éxito.");
       }
     } catch (error) {
       console.error("Error guardando el token en el servidor:", error);
     }
-  } else {
-    console.log('Debes usar un dispositivo físico para las notificaciones push');
   }
 
   if (Platform.OS === 'android') {
@@ -77,14 +70,20 @@ async function registerForPushNotificationsAsync() {
   return token;
 }
 
-const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
+// 👇 Recibimos el estado de "Mute Global" como propiedades 👇
+const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted }: { item: any; isActive: boolean; isGlobalMuted: boolean; setIsGlobalMuted: any }) => {
   const navigation = useNavigation<any>();
-  const [isMuted, setIsMuted] = useState(false); 
+  const insets = useSafeAreaInsets(); 
 
   const player = useVideoPlayer(item.videoUrl, player => {
     player.loop = true;
-    player.muted = isMuted; 
+    player.muted = isGlobalMuted; 
   });
+
+  // Si cambia el Mute Global, actualizamos este reproductor al instante
+  useEffect(() => {
+    player.muted = isGlobalMuted;
+  }, [isGlobalMuted, player]);
 
   useEffect(() => {
     if (isActive) player.play();
@@ -94,12 +93,46 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
   const avatarUri = item.user?.avatarUrl || 'https://i.pravatar.cc/150?u=' + item.userId;
 
   const [isLiked, setIsLiked] = useState(item.isLiked || false);
-  const [isSaved, setIsSaved] = useState(item.isSaved || false);
-  
   const [showComments, setShowComments] = useState(false);
+  const [likesCount, setLikesCount] = useState(item._count?.likes || 0);
+  const [commentsCount, setCommentsCount] = useState(item._count?.comments || 0);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
+
+  const goToProfile = (userIdToNavigate: string) => {
+    setShowComments(false); 
+    navigation.navigate('PublicProfile', { userId: userIdToNavigate });
+  };
+
+  const translateX = useRef(new Animated.Value(0)).current;
+
+  const onGestureEvent = Animated.event(
+    [{ nativeEvent: { translationX: translateX } }],
+    { useNativeDriver: true }
+  );
+
+  const onHandlerStateChange = (event: any) => {
+    if (event.nativeEvent.oldState === State.ACTIVE) {
+      const { translationX, velocityX } = event.nativeEvent;
+
+      if (translationX < -100 || velocityX < -500) {
+        Animated.timing(translateX, {
+          toValue: -width,
+          duration: 200,
+          useNativeDriver: true,
+        }).start(() => {
+          goToProfile(item.userId);
+          setTimeout(() => translateX.setValue(0), 500); 
+        });
+      } else {
+        Animated.spring(translateX, {
+          toValue: 0,
+          useNativeDriver: true,
+        }).start();
+      }
+    }
+  };
 
   const handleProtectedAction = async (actionCallback: () => void) => {
     const token = await AsyncStorage.getItem('userToken');
@@ -129,7 +162,11 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
 
   const toggleLike = async () => {
     const previousState = isLiked;
+    const previousCount = likesCount; // 👈 Guardamos el número anterior
+
     setIsLiked(!isLiked); 
+    setLikesCount(isLiked ? likesCount - 1 : likesCount + 1); // 👈 Sumamos o restamos 1
+
     try {
       const token = await AsyncStorage.getItem('userToken');
       await axios.post(`${BASE_URL}/videos/${item.id}/like`, {}, {
@@ -137,19 +174,7 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
       });
     } catch (error) {
       setIsLiked(previousState); 
-    }
-  };
-
-  const toggleBookmark = async () => {
-    const previousState = isSaved;
-    setIsSaved(!isSaved); 
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      await axios.post(`${BASE_URL}/videos/${item.id}/save`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-    } catch (error) {
-      setIsSaved(previousState);
+      setLikesCount(previousCount); // 👈 Revertimos si hay error
     }
   };
 
@@ -175,74 +200,101 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
         { headers: { Authorization: `Bearer ${token}` }}
       );
       setComments([response.data, ...comments]); 
+      setCommentsCount(commentsCount + 1); // 👈 AGREGAR ESTA LÍNEA
       setNewComment(''); 
     } catch (error) {
       Alert.alert("Error", "No se pudo enviar el comentario.");
     }
   };
 
+  // 👇 El mute ahora invierte el estado global para todos los videos 👇
   const toggleMute = () => {
-    player.muted = !isMuted;
-    setIsMuted(!isMuted);
+    setIsGlobalMuted(!isGlobalMuted);
   };
 
   const toggleFollow = () => {
-    console.log("Llamar a la API para Seguir al usuario");
+    console.log("Llamar a la API para Seguir al usuario: ", item.userId);
   };
 
   return (
-    <View style={styles.videoContainer}>
-      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
-      <View style={styles.darkOverlay} />
+    <View style={styles.videoWrapper}>
       
-      <View style={styles.infoOverlay}>
-        {item.productName ? (
-          <TouchableOpacity style={styles.productTag}>
-            <Ionicons name="cart" size={16} color="#000" />
-            <Text style={styles.productName} numberOfLines={1}>{item.productName}</Text>
-            {item.productPrice ? (
-              <Text style={styles.productPrice}>${item.productPrice.toFixed(2)}</Text>
+      <View style={styles.profileIndicator}>
+        <Image source={{ uri: avatarUri }} style={styles.profileIndicatorImg} />
+        <Text style={styles.profileIndicatorText}>Ir al perfil</Text>
+        <Ionicons name="chevron-forward" size={24} color={COLORS.textMuted} />
+      </View>
+
+      <PanGestureHandler
+        onGestureEvent={onGestureEvent}
+        onHandlerStateChange={onHandlerStateChange}
+        activeOffsetX={[-20, 20]} 
+      >
+        <Animated.View style={[styles.videoContainer, { transform: [{ translateX }] }]}>
+          <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+          <View style={styles.darkOverlay} />
+          
+          <View style={styles.infoOverlay}>
+            <TouchableOpacity onPress={() => goToProfile(item.userId)}>
+              <Text style={styles.username}>@{item.user?.username || 'usuario'}</Text>
+            </TouchableOpacity>
+            <Text style={styles.description}>{item.description}</Text>
+
+            {item.productName ? (
+              <TouchableOpacity style={styles.productTag}>
+                <Ionicons name="cart" size={16} color="#000" />
+                <Text style={styles.productName} numberOfLines={1}>{item.productName}</Text>
+                {item.productPrice ? (
+                  <Text style={styles.productPrice}>${item.productPrice.toFixed(2)}</Text>
+                ) : null}
+                <Ionicons name="chevron-forward" size={14} color="#000" />
+              </TouchableOpacity>
             ) : null}
-            <Ionicons name="chevron-forward" size={14} color="#000" />
-          </TouchableOpacity>
-        ) : null}
+          </View>
 
-        <Text style={styles.username}>@{item.user?.username || 'usuario'}</Text>
-        <Text style={styles.description}>{item.description}</Text>
-      </View>
+          {/* 👇 NUEVO ORDEN DEL MENÚ DERECHO INVERTIDO Y TRANSPARENTE 👇 */}
+          <View style={styles.actionOverlay}>
+            
+            {/* 1. Mute (Global) */}
+            <TouchableOpacity style={styles.actionButton} onPress={toggleMute}>
+              <Ionicons name={isGlobalMuted ? "volume-mute" : "volume-high"} size={28} color="rgba(255,255,255,0.5)" />
+            </TouchableOpacity>
 
-      <View style={styles.actionOverlay}>
-        <View style={styles.profileContainer}>
-          <Image source={{ uri: avatarUri }} style={styles.profilePic} />
-          <TouchableOpacity style={styles.followButton} onPress={() => handleProtectedAction(toggleFollow)}>
-            <Ionicons name="add" size={14} color="#FFF" />
-          </TouchableOpacity>
-        </View>
+           {/* 2. Like */}
+            <TouchableOpacity style={styles.actionButton} onPress={() => handleProtectedAction(toggleLike)}>
+              <Ionicons name={isLiked ? "heart" : "heart-outline"} size={32} color={isLiked ? "#FF2D55" : "rgba(255,255,255,0.7)"} />
+              <Text style={styles.actionText}>{likesCount}</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleProtectedAction(toggleLike)}>
-          <Ionicons name={isLiked ? "heart" : "heart-outline"} size={32} color={isLiked ? "#FF2D55" : COLORS.text} />
-        </TouchableOpacity>
+            {/* 3. Comentarios */}
+            <TouchableOpacity style={styles.actionButton} onPress={() => handleProtectedAction(openComments)}>
+              <Ionicons name="chatbubble-ellipses" size={28} color="rgba(255,255,255,0.7)" />
+              <Text style={styles.actionText}>{commentsCount}</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleProtectedAction(openComments)}>
-          <Ionicons name="chatbubble-ellipses" size={28} color={COLORS.text} />
-        </TouchableOpacity>
+            {/* 4. Compartir */}
+            <TouchableOpacity style={styles.actionButton} onPress={shareVideo}>
+              <Ionicons name="arrow-redo" size={28} color="rgba(255,255,255,0.5)" />
+            </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton} onPress={() => handleProtectedAction(toggleBookmark)}>
-          <Ionicons name={isSaved ? "bookmark" : "bookmark-outline"} size={28} color={isSaved ? COLORS.accent : COLORS.text} />
-        </TouchableOpacity>
+            {/* 5. Foto de Perfil (Abajo de todo) */}
+            <View style={styles.profileContainer}>
+              <TouchableOpacity onPress={() => goToProfile(item.userId)}>
+                <Image source={{ uri: avatarUri }} style={styles.profilePic} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.followButton} onPress={() => handleProtectedAction(() => toggleFollow())}>
+                <Ionicons name="add" size={14} color="#FFF" />
+              </TouchableOpacity>
+            </View>
 
-        <TouchableOpacity style={styles.actionButton} onPress={shareVideo}>
-          <Ionicons name="arrow-redo" size={28} color={COLORS.text} />
-        </TouchableOpacity>
+          </View>
 
-        <TouchableOpacity style={styles.actionButton} onPress={toggleMute}>
-          <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={28} color={COLORS.text} />
-        </TouchableOpacity>
-      </View>
+        </Animated.View>
+      </PanGestureHandler>
 
       <Modal visible={showComments} animationType="slide" transparent={true} onRequestClose={() => setShowComments(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalContainer}>
-          <View style={styles.bottomSheet}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalContainer}>
+          <View style={[styles.bottomSheet, { height: Dimensions.get('window').height * 0.5, paddingBottom: Math.max(insets.bottom, 15) }]}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Comentarios</Text>
               <TouchableOpacity onPress={() => setShowComments(false)}>
@@ -258,9 +310,13 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
                 keyExtractor={(c, index) => index.toString()}
                 renderItem={({ item: comment }) => (
                   <View style={styles.commentBox}>
-                    <Image source={{ uri: comment.user?.avatarUrl || `https://ui-avatars.com/api/?name=${comment.user?.username || 'User'}&background=random&color=fff&size=150` }} style={styles.commentAvatar} />
+                    <TouchableOpacity onPress={() => goToProfile(comment.userId)}>
+                      <Image source={{ uri: comment.user?.avatarUrl || `https://ui-avatars.com/api/?name=${comment.user?.username || 'User'}&background=random&color=fff&size=150` }} style={styles.commentAvatar} />
+                    </TouchableOpacity>
                     <View style={styles.commentContent}>
-                      <Text style={styles.commentUser}>@{comment.user?.username || 'usuario'}</Text>
+                      <TouchableOpacity onPress={() => goToProfile(comment.userId)}>
+                        <Text style={styles.commentUser}>@{comment.user?.username || 'usuario'}</Text>
+                      </TouchableOpacity>
                       <Text style={styles.commentText}>{comment.text}</Text>
                     </View>
                   </View>
@@ -286,7 +342,13 @@ const FeedItem = ({ item, isActive }: { item: any; isActive: boolean }) => {
       </Modal>
     </View>
   );
-};
+// 👇 2. Agregamos esta función matemática justo antes de cerrar el FeedItem 👇
+}, (prevProps, nextProps) => {
+  // Solo se re-dibuja si cambia el ID, si se activa/pausa, o si se mutea
+  return prevProps.item.id === nextProps.item.id && 
+         prevProps.isActive === nextProps.isActive &&
+         prevProps.isGlobalMuted === nextProps.isGlobalMuted;
+});
 
 export default function FeedScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -295,10 +357,12 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('Para ti'); 
 
+  // 👇 Estado global de Mute manejado desde la pantalla principal 👇
+  const [isGlobalMuted, setIsGlobalMuted] = useState(false);
+
   const isFocused = useIsFocused();
   const navigation = useNavigation<any>();
 
-  // 👇 4. DISPARAMOS LA PETICIÓN DE NOTIFICACIONES AL ABRIR LA APP 👇
   useEffect(() => {
     registerForPushNotificationsAsync();
   }, []);
@@ -330,6 +394,17 @@ export default function FeedScreen() {
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index);
   }).current;
+
+  const renderItem = useCallback(({ item, index }: any) => (
+    <FeedItem 
+      item={item} 
+      isActive={index === activeIndex && isFocused} 
+      isGlobalMuted={isGlobalMuted} 
+      setIsGlobalMuted={setIsGlobalMuted} 
+    />
+  ), [activeIndex, isFocused, isGlobalMuted]);
+
+  const keyExtractor = useCallback((item: any) => item.id, []);
 
   if (loading) {
     return (
@@ -363,8 +438,8 @@ export default function FeedScreen() {
 
       <FlatList
         data={videos}
-        renderItem={({ item, index }) => <FeedItem item={item} isActive={index === activeIndex && isFocused} />}
-        keyExtractor={item => item.id}
+        renderItem={renderItem}          // 👈 Usamos la función memorizada
+        keyExtractor={keyExtractor}      // 👈 Usamos la llave memorizada
         pagingEnabled 
         showsVerticalScrollIndicator={false}
         snapToAlignment="start"
@@ -374,6 +449,11 @@ export default function FeedScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} colors={[COLORS.accent]} />
         }
+        // 👇 AGREGAR ESTAS 4 LÍNEAS DE RENDIMIENTO 👇
+        initialNumToRender={3}           // Solo renderiza 3 videos al iniciar
+        maxToRenderPerBatch={3}          // Renderiza de a 3 mientras bajas
+        windowSize={5}                   // Mantiene en memoria 2 arriba, el actual, y 2 abajo
+        removeClippedSubviews={true}     // ¡Destruye los videos que quedan muy lejos!
       />
     </View>
   );
@@ -381,35 +461,76 @@ export default function FeedScreen() {
 
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: COLORS.background },
+  videoWrapper: { height: height, width: width, backgroundColor: '#000', overflow: 'hidden' }, 
   videoContainer: { height: height, width: width, backgroundColor: COLORS.background },
   darkOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)' },
-  infoOverlay: { position: 'absolute', bottom: 90, left: 20, right: 80 },
-  username: { color: COLORS.text, fontSize: 18, fontWeight: 'bold', marginBottom: 5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
-  description: { color: COLORS.text, fontSize: 15, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
-  actionOverlay: { position: 'absolute', bottom: 90, right: 10, alignItems: 'center' },
-  profileContainer: { alignItems: 'center', marginBottom: 20 },
+  
+  // 👇 TEXTOS MÁS PEQUEÑOS Y MÁS ABAJO 👇
+  infoOverlay: { position: 'absolute', bottom: 70, left: 15, right: 75},
+  username: { color: COLORS.text, fontSize: 15, fontWeight: 'bold', marginBottom: 10, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
+  description: { color: COLORS.text, fontSize: 13, marginBottom: 30, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
+  
+  // 👇 MENÚ LATERAL MÁS ABAJO 👇
+  actionOverlay: { position: 'absolute', bottom: 100, right: 10, alignItems: 'center' },
+  actionButton: { alignItems: 'center', marginBottom: 20 },
+  actionText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  
+  // 👇 FOTO DE PERFIL AHORA ESTÁ ABAJO, ASÍ QUE LLEVA MARGIN TOP 👇
+  profileContainer: { alignItems: 'center', marginTop: 5 },
   profilePic: { width: 50, height: 50, borderRadius: 25, borderWidth: 2, borderColor: COLORS.accent },
   followButton: { position: 'absolute', bottom: -10, backgroundColor: COLORS.primary, width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  actionButton: { width: 50, height: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  productTag: { flexDirection: 'row', backgroundColor: COLORS.accent, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center', marginBottom: 12, alignSelf: 'flex-start', maxWidth: '90%', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 3, elevation: 5 },
-  productName: { color: '#000', fontWeight: 'bold', fontSize: 14, marginLeft: 5, marginRight: 8, flexShrink: 1 },
-  productPrice: { color: '#000', fontWeight: '900', fontSize: 14, marginRight: 5 },
+  
+  productTag: { flexDirection: 'row', backgroundColor: COLORS.accent, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center', marginBottom: 12, alignSelf: 'flex-start', maxWidth: '90%', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 3, elevation: 5 },
+  productName: { color: '#000', fontWeight: 'bold', fontSize: 13, marginLeft: 5, marginRight: 8, flexShrink: 1 },
+  productPrice: { color: '#000', fontWeight: '900', fontSize: 13, marginRight: 5 },
+  
   topNavContainer: { position: 'absolute', top: 30, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, zIndex: 10 },
   topNavTabs: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 15 },
   topNavTextActive: { color: '#FFFFFF', fontSize: 17, fontWeight: 'bold', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4 },
   topNavTextInactive: { color: 'rgba(255,255,255,0.6)', fontSize: 16, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
   topNavSearch: { position: 'absolute', right: 20 },
+  
   modalContainer: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   bottomSheet: { backgroundColor: COLORS.surface, height: height * 0.6, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#333', paddingBottom: 15, marginBottom: 15 },
   sheetTitle: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
   commentBox: { flexDirection: 'row', marginBottom: 15 },
   commentAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
-  commentContent: { flex: 1 },
+  commentContent: { flex: 1, justifyContent: 'center' },
   commentUser: { color: COLORS.textMuted, fontSize: 12, fontWeight: 'bold', marginBottom: 3 },
   commentText: { color: COLORS.text, fontSize: 14 },
   emptyText: { color: COLORS.textMuted, textAlign: 'center', marginTop: 20 },
   inputContainer: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#333', paddingTop: 15, marginTop: 10 },
   commentInput: { flex: 1, backgroundColor: COLORS.background, color: COLORS.text, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, marginRight: 10 },
   sendButton: { padding: 10 },
+  
+  profileIndicator: {
+    position: 'absolute',
+    right: 20, 
+    top: height / 2 - 50, 
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: -1, 
+  },
+  profileIndicatorImg: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: COLORS.accent,
+    marginBottom: 8,
+  },
+  profileIndicatorText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });

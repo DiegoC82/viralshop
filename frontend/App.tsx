@@ -1,5 +1,7 @@
 // frontend/App.tsx
 import React, { useCallback, useEffect, useState, useRef } from 'react';
+import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, Text, StyleSheet, Image, Dimensions, StatusBar, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -21,6 +23,7 @@ import ProUpgradeScreen from './src/screens/ProUpgradeScreen'; // Asegúrate de 
 import UploadScreen from './src/screens/UploadScreen';
 import VerifiedUpgradeScreen from './src/screens/VerifiedUpgradeScreen';
 import UploadRemateScreen from './src/screens/UploadRemateScreen';
+import PublicProfileScreen from './src/screens/PublicProfileScreen'; // Asegúrate de ajustar la ruta
 import { COLORS } from './src/theme/colors';
 
 
@@ -92,27 +95,30 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator 
-          initialRouteName={initialRoute} 
-          screenOptions={{ headerShown: false }} 
-        >
-          <Stack.Screen name="Auth" component={AuthScreen} />
-          <Stack.Screen name="Interests" component={InterestsScreen} />
-          <Stack.Screen name="PreLoad" component={PreLoadScreen} /> 
-          <Stack.Screen name="MainTabs" component={MainTabs} /> 
-          <Stack.Screen name="MapSearch" component={MapSearchScreen} />
-          <Stack.Screen name="SingleVideo" component={SingleVideoScreen} />
-          <Stack.Screen name="ChatDetails" component={ChatDetailsScreen} />
-          <Stack.Screen name="SalesMetrics" component={SalesMetricsScreen} />
-          <Stack.Screen name="ProUpgrade" component={ProUpgradeScreen} />
-          <Stack.Screen name="VerifiedUpgrade" component={VerifiedUpgradeScreen} />
-          <Stack.Screen name="Upload" component={UploadScreen} />
-          <Stack.Screen name="UploadRemate" component={UploadRemateScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <Stack.Navigator 
+            initialRouteName={initialRoute} 
+            screenOptions={{ headerShown: false }} 
+          >
+            <Stack.Screen name="Auth" component={AuthScreen} />
+            <Stack.Screen name="Interests" component={InterestsScreen} />
+            <Stack.Screen name="PreLoad" component={PreLoadScreen} /> 
+            <Stack.Screen name="MainTabs" component={MainTabs} /> 
+            <Stack.Screen name="MapSearch" component={MapSearchScreen} />
+            <Stack.Screen name="SingleVideo" component={SingleVideoScreen} />
+            <Stack.Screen name="ChatDetails" component={ChatDetailsScreen} />
+            <Stack.Screen name="SalesMetrics" component={SalesMetricsScreen} />
+            <Stack.Screen name="ProUpgrade" component={ProUpgradeScreen} />
+            <Stack.Screen name="VerifiedUpgrade" component={VerifiedUpgradeScreen} />
+            <Stack.Screen name="Upload" component={UploadScreen} />
+            <Stack.Screen name="UploadRemate" component={UploadRemateScreen} />
+            <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 

@@ -1,4 +1,4 @@
-// frontend/src/screens/AuthScreen.tsx (VERSIÓN EXPO GO)
+// frontend/src/screens/AuthScreen.tsx
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,13 +13,11 @@ export default function AuthScreen({ navigation }: any) {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Estados del formulario
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // 👇 LÓGICA REAL PARA EL CORREO (Funciona en Expo Go) 👇
   const handleAuthentication = async () => {
     setIsLoading(true);
     try {
@@ -28,7 +26,6 @@ export default function AuthScreen({ navigation }: any) {
       
       const response = await axios.post(`${BACKEND_URL}${endpoint}`, payload);
       
-      // Guardamos el token REAL de tu base de datos
       await AsyncStorage.setItem('userToken', response.data.token); 
       
       navigation.navigate('Interests'); 
@@ -40,18 +37,13 @@ export default function AuthScreen({ navigation }: any) {
     }
   };
 
-  // 👇 LÓGICA SIMULADA PARA EXPO GO 👇
   const handleSimulatedLogin = async (provider: string) => {
     console.log(`[EXPO GO] Simulando login con ${provider}...`);
     setIsLoading(true);
     
-    // Fingimos que el servidor está pensando por 1 segundo
     setTimeout(async () => {
-      // Guardamos un token falso para que el Auto-Login funcione
       await AsyncStorage.setItem('userToken', `token_falso_de_${provider}`); 
       setIsLoading(false);
-      
-      // Pasamos a la siguiente pantalla igual que en la app real
       navigation.navigate('Interests'); 
     }, 1000);
   };
@@ -62,9 +54,16 @@ export default function AuthScreen({ navigation }: any) {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === "ios" ? "padding" : undefined} 
+      style={styles.container}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.mainWrapper}>
           <View style={styles.formContainer}>
             
@@ -83,7 +82,6 @@ export default function AuthScreen({ navigation }: any) {
                   <Text style={styles.socialButtonText}>Usar correo electrónico</Text>
                 </TouchableOpacity>
 
-                {/* BOTONES SIMULADOS */}
                 <TouchableOpacity style={styles.socialButton} onPress={() => handleSimulatedLogin('Facebook')}>
                   <Ionicons name="logo-facebook" size={24} color="#1877F2" style={styles.icon} />
                   <Text style={styles.socialButtonText}>Continuar con Facebook</Text>

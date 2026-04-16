@@ -1,5 +1,6 @@
 // frontend/src/screens/ChatDetailsScreen.tsx
 import React, { useState, useEffect, useRef } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   View, Text, StyleSheet, TouchableOpacity, SafeAreaView, 
   KeyboardAvoidingView, Platform, TextInput, FlatList, ActivityIndicator 
@@ -14,7 +15,7 @@ const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 export default function ChatDetailsScreen({ route, navigation }: any) {
   const { chatId, chatName } = route.params;
   const flatListRef = useRef<FlatList>(null);
-
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
@@ -130,7 +131,7 @@ export default function ChatDetailsScreen({ route, navigation }: any) {
         )}
 
         {/* CAMPO DE TEXTO PARA ENVIAR MENSAJE */}
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 10) }]}>
           <TextInput 
             style={styles.input} 
             placeholder="Enviar mensaje..." 
