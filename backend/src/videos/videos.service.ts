@@ -21,8 +21,14 @@ export class VideosService {
 
   async getFeed() {
     return this.prisma.video.findMany({ 
-      where: { isAuction: false }, // 👈 ESTO ES LA MAGIA: Oculta los remates del feed
-      include: { user: true }, 
+      where: { isAuction: false }, 
+      include: { 
+        user: true,
+        // 👇 AGREGAR ESTO PARA CONTAR 👇
+        _count: {
+          select: { likes: true, comments: true }
+        }
+      }, 
       orderBy: { createdAt: 'desc' } 
     });
   }
