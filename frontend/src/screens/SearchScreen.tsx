@@ -328,16 +328,50 @@ export default function SearchScreen({ navigation }: any) {
           data={results}
           keyExtractor={(item) => item.id}
           numColumns={3}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.videoThumbnailContainer} onPress={() => navigation.navigate('SingleVideo', { video: item })}>
-              <Image source={{ uri: getThumbnail(item.videoUrl) }} style={styles.videoThumbnail} />
-              {item.productPrice ? (
-                <View style={styles.priceTag}>
-                  <Text style={styles.priceText}>${item.productPrice}</Text>
+          renderItem={({ item }) => {
+            // 1. Buscamos el ícono de la categoría
+            const catIcon = CATEGORIES_DATA.find(c => c.name === item.category)?.icon || 'cube-outline';
+            
+            // 2. Preparamos la foto del usuario (o una por defecto si no tiene)
+            const avatarUri = item.user?.avatarUrl || `https://ui-avatars.com/api/?name=${item.user?.username || 'User'}&background=random&color=fff&size=150`;
+
+            return (
+              <TouchableOpacity style={styles.videoThumbnailContainer} onPress={() => navigation.navigate('SingleVideo', { video: item })}>
+                <Image source={{ uri: getThumbnail(item.videoUrl) }} style={styles.videoThumbnail} />
+                
+                {/* Ícono de Categoría (Arriba-Derecha) */}
+                <View style={styles.catIconBadge}>
+                  <Ionicons name={catIcon as any} size={14} color="#FFF" />
                 </View>
-              ) : null}
-            </TouchableOpacity>
-          )}
+
+                {/* Avatar del Usuario (Arriba-Izquierda) */}
+                <View style={styles.userAvatarBadge}>
+                  <Image source={{ uri: avatarUri }} style={styles.miniAvatar} />
+                </View>
+
+                {/* Detalle/Descripción corta (Sobre el precio) */}
+                <View style={styles.videoDetailOverlay}>
+                  <Text style={styles.videoDetailText} numberOfLines={1}>{item.description}</Text>
+                </View>
+
+                {/* Fila inferior: Precios (Normal o en Oferta tachado) */}
+                <View style={styles.bottomDataRow}>
+                  {item.discountPrice ? (
+                    <View style={[styles.miniPriceTag, { backgroundColor: '#FF2D55', flexDirection: 'row', alignItems: 'center' }]}>
+                      <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 9, textDecorationLine: 'line-through', marginRight: 4 }}>
+                        ${item.productPrice}
+                      </Text>
+                      <Text style={[styles.miniPriceText, { color: '#FFF' }]}>${item.discountPrice}</Text>
+                    </View>
+                  ) : item.productPrice ? (
+                    <View style={styles.miniPriceTag}>
+                      <Text style={styles.miniPriceText}>${item.productPrice}</Text>
+                    </View>
+                  ) : <View />}
+                </View>
+              </TouchableOpacity>
+            );
+          }}
           ListEmptyComponent={
             <View style={styles.centerContainer}>
               <Ionicons name="search-outline" size={60} color="#333" style={{ marginBottom: 15 }} />
@@ -382,6 +416,33 @@ const styles = StyleSheet.create({
   videoThumbnail: { width: '100%', height: '100%', backgroundColor: '#222' },
   priceTag: { position: 'absolute', bottom: 5, left: 5, backgroundColor: COLORS.accent, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   priceText: { color: '#000', fontSize: 10, fontWeight: 'bold' },
+
+  catIconBadge: { 
+    position: 'absolute', top: 5, right: 5, 
+    backgroundColor: 'rgba(0,0,0,0.4)', padding: 4, borderRadius: 10 
+  },
+  userAvatarBadge: {
+    position: 'absolute', top: 5, left: 5,
+    backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 12
+  },
+  miniAvatar: {
+    width: 22, height: 22, borderRadius: 11, borderWidth: 1, borderColor: COLORS.accent
+  },
+  videoDetailOverlay: { 
+    position: 'absolute', bottom: 25, left: 5, right: 5 
+  },
+  videoDetailText: { 
+    color: '#FFF', fontSize: 10, fontWeight: '500', 
+    textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 2 
+  },
+  bottomDataRow: { 
+    position: 'absolute', bottom: 5, left: 5, right: 5, 
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' 
+  },
+  miniPriceTag: { 
+    backgroundColor: COLORS.accent, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4 
+  },
+  miniPriceText: { color: '#000', fontSize: 10, fontWeight: 'bold' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   dropdownContainer: { width: '85%', backgroundColor: COLORS.surface, borderRadius: 12, padding: 15, borderWidth: 1, borderColor: '#2A1A3D' },

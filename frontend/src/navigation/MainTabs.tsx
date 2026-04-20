@@ -1,9 +1,8 @@
 // frontend/src/navigation/MainTabs.tsx
 import React from 'react';
-import { View } from 'react-native';
-import { Alert } from 'react-native';
+import { View, Alert, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'; // 👈 Agregamos MaterialCommunityIcons
 import { COLORS } from '../theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -91,15 +90,14 @@ export default function MainTabs() {
         }}
       />
       
-      {/* 👇 Candado en Subir y Mensajes 👇 */}
+      {/* 👇 Pestaña de Remates con Ícono Compuesto (Martillo de Juez + Moneda) 👇 */}
       <Tab.Screen 
         name="Remates" 
         component={RemateScreen} 
         options={{
           tabBarIcon: ({ focused }) => (
-            // 👇 Agregamos el contenedor circular para resaltar el martillo
             <View style={{ 
-              top: -10, // Lo subimos un poco para que sobresalga
+              top: -10, 
               width: 50, 
               height: 50, 
               backgroundColor: COLORS.background, 
@@ -107,13 +105,37 @@ export default function MainTabs() {
               justifyContent: 'center', 
               alignItems: 'center',
               borderWidth: 3,
-              borderColor: focused ? COLORS.accent : '#333' // Brilla cuando estás ahí
+              borderColor: focused ? COLORS.accent : '#333' 
             }}>
-              <Ionicons 
-                name={focused ? 'hammer' : 'hammer-outline'} 
-                size={28} 
-                color={COLORS.accent} 
+
+              {/* 2. El Martillo del Juez (Arriba a la derecha, inclinado) */}
+              <MaterialCommunityIcons
+                name="gavel"
+                size={28}
+                color={focused ? COLORS.accent : COLORS.textMuted}
+                style={{ 
+                  position: 'absolute', 
+                  top: 2, 
+                  right: 2, 
+                  transform: [{ scaleX: -1 }, { rotate: '-15deg' }] // Lo inclinamos un poco
+                }}
               />
+              
+              {/* 1. La Moneda (Abajo a la izquierda) */}
+              <View style={{ 
+                position: 'absolute', 
+                bottom: 5, 
+                left: 6, 
+                backgroundColor: focused ? COLORS.accent : COLORS.textMuted, // Dorada si está activa
+                borderRadius: 10, 
+                width: 20, 
+                height: 20, 
+                justifyContent: 'center', 
+                alignItems: 'center' 
+              }}>
+                <Text style={{ color: '#000', fontSize: 12, fontWeight: 'bold' }}>$</Text>
+              </View>
+
             </View>
           ),
           tabBarLabel: 'Remate'

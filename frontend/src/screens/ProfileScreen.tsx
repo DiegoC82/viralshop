@@ -10,6 +10,7 @@ import {
   Dimensions, 
   ActivityIndicator, 
   Alert,
+  TextInput,
   Modal 
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CATEGORIES_DATA } from '../data/categories';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../theme/colors';
 
 const { width } = Dimensions.get('window');
@@ -38,6 +39,10 @@ export default function ProfileScreen({ navigation, route }: any) {
   // 👇 1. AGREGAR ESTOS ESTADOS Y FUNCIONES NUEVAS 👇
   const [editMenuVisible, setEditMenuVisible] = useState(false);
   const isPaymentCompleted = route?.params?.paymentCompleted;
+
+  const [offerModalVisible, setOfferModalVisible] = useState(false);
+  const [selectedVideoToOffer, setSelectedVideoToOffer] = useState<any>(null);
+  const [newDiscountPrice, setNewDiscountPrice] = useState('');
 
   const handleSimulateUploadDNI = () => {
     Alert.alert("DNI Subido", "Tu documento está en revisión. ¡Perfil verificado temporalmente!");
@@ -178,6 +183,22 @@ export default function ProfileScreen({ navigation, route }: any) {
     // 👇 SI ES MÉTRICAS, DEVOLVEMOS UN ARRAY CON UN SOLO OBJETO 👇
     if (activeTab === 'metrics') return [{ id: 'metrics-view' }]; 
     return [];
+  };
+
+  const handleApplyOffer = async () => {
+    if (!newDiscountPrice || !selectedVideoToOffer) return;
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      await axios.patch(`${BACKEND_URL}/videos/${selectedVideoToOffer.id}/oferta`, 
+        { discountPrice: parseFloat(newDiscountPrice) },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      Alert.alert("¡Oferta aplicada!", "El producto ahora tiene descuento.");
+      setOfferModalVisible(false);
+      checkAuthAndFetchProfile(); // Recargamos para ver el cambio
+    } catch (error) {
+      Alert.alert("Error", "No se pudo aplicar la oferta.");
+    }
   };
 
   // SUBCOMPONENTE: Estadísticas
@@ -378,7 +399,18 @@ export default function ProfileScreen({ navigation, route }: any) {
                   style={[styles.publishButton, { flex: 1, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.accent }]}
                   onPress={() => navigation.navigate('UploadRemate')} 
                 >
-                  <Ionicons name="hammer-outline" size={18} color={COLORS.accent} style={{ marginRight: 6 }} />
+                  {/* 👇 ÍCONO COMPUESTO PEQUEÑO 👇 */}
+                  <View style={{ width: 20, height: 20, marginRight: 8 }}>
+                    <MaterialCommunityIcons
+                      name="gavel"
+                      size={18}
+                      color={COLORS.accent}
+                      style={{ position: 'absolute', top: -4, right: -4, transform: [{ scaleX: -1 }, { rotate: '-15deg' }] }}
+                    />
+                    <View style={{ position: 'absolute', bottom: 0, left: -2, backgroundColor: COLORS.accent, borderRadius: 7, width: 14, height: 14, justifyContent: 'center', alignItems: 'center' }}>
+                      <Text style={{ color: '#000', fontSize: 9, fontWeight: 'bold' }}>$</Text>
+                    </View>
+                  </View>
                   <Text style={[styles.publishButtonText, { color: COLORS.accent }]}>Nuevo Remate</Text>
                 </TouchableOpacity>
               </View>
@@ -404,7 +436,22 @@ export default function ProfileScreen({ navigation, route }: any) {
                 style={[styles.tab, activeTab === 'remates' && styles.activeTab]} 
                 onPress={() => setTimeout(() => setActiveTab('remates'), 0)}
               >
-                <Ionicons name="hammer-outline" size={24} color={activeTab === 'remates' ? COLORS.text : COLORS.textMuted} />
+                {/* 👇 ÍCONO COMPUESTO MEDIANO PARA LA PESTAÑA 👇 */}
+                <View style={{ width: 28, height: 28, justifyContent: 'center', alignItems: 'center' }}>
+                  <MaterialCommunityIcons
+                    name="gavel"
+                    size={22}
+                    color={activeTab === 'remates' ? COLORS.text : COLORS.textMuted}
+                    style={{ position: 'absolute', top: -2, right: 0, transform: [{ scaleX: -1 }, { rotate: '-15deg' }] }}
+                  />
+                  <View style={{ 
+                    position: 'absolute', bottom: 2, left: 0, 
+                    backgroundColor: activeTab === 'remates' ? COLORS.text : COLORS.textMuted, 
+                    borderRadius: 8, width: 14, height: 14, justifyContent: 'center', alignItems: 'center' 
+                  }}>
+                    <Text style={{ color: COLORS.background, fontSize: 10, fontWeight: 'bold' }}>$</Text>
+                  </View>
+                </View>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -416,13 +463,12 @@ export default function ProfileScreen({ navigation, route }: any) {
             </View>
           </View>
         }
+
         renderItem={({ item }) => {
           // 👇 1. SI ESTAMOS EN LA PESTAÑA DE MÉTRICAS, DIBUJAMOS EL PANEL 👇
           if (activeTab === 'metrics') {
-            // Extraemos las métricas reales del perfil
             const metrics = profile?.metrics || { totalViews: 0, totalSales: 0, activeAuctionsCount: 0 };
             
-            // Formateamos las vistas para que se vean geniales (Ej: 1500 se convierte en 1.5k)
             const formattedViews = metrics.totalViews >= 1000 
               ? (metrics.totalViews / 1000).toFixed(1) + 'k' 
               : metrics.totalViews;
@@ -463,27 +509,39 @@ export default function ProfileScreen({ navigation, route }: any) {
             );
           }
 
-          // 👇 2. SI NO ES MÉTRICAS, SEGUIMOS DIBUJANDO LOS VIDEOS NORMALES 👇
-          // 👇 NUEVA LÓGICA PARA MINIATURAS DE VIDEO 👇
+          // 👇 2. SI NO ES MÉTRICAS, DIBUJAMOS LOS VIDEOS 👇
           const catIcon = CATEGORIES_DATA.find(c => c.name === item.category)?.icon || 'cube-outline';
 
           return (
-            <TouchableOpacity style={styles.videoThumbnailContainer} onPress={() => navigation.navigate('SingleVideo', { video: item })}>
+            <TouchableOpacity 
+              style={styles.videoThumbnailContainer} 
+              onPress={() => navigation.navigate('SingleVideo', { video: item })}
+              // 👇 AQUÍ ESTÁ EL EVENTO PARA MANTENER PRESIONADO 👇
+              onLongPress={() => { 
+                setSelectedVideoToOffer(item); 
+                setOfferModalVisible(true); 
+              }}
+            >
               <Image source={{ uri: getThumbnail(item.videoUrl) }} style={styles.videoThumbnail} />
               
-              {/* Ícono de Categoría (Arriba-Derecha) */}
               <View style={styles.catIconBadge}>
                 <Ionicons name={catIcon as any} size={14} color="#FFF" />
               </View>
 
-              {/* Detalle/Descripción corta (Sobre el precio) */}
               <View style={styles.videoDetailOverlay}>
                 <Text style={styles.videoDetailText} numberOfLines={1}>{item.description}</Text>
               </View>
 
-              {/* Fila inferior: Precio y Vistas */}
               <View style={styles.bottomDataRow}>
-                {item.productPrice ? (
+                {/* 👇 AQUÍ ESTÁ LA LÓGICA DE LOS DOS PRECIOS (NORMAL O TACHADO) 👇 */}
+                {item.discountPrice ? (
+                  <View style={[styles.miniPriceTag, { backgroundColor: '#FF2D55', flexDirection: 'row', alignItems: 'center' }]}>
+                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 9, textDecorationLine: 'line-through', marginRight: 4 }}>
+                      ${item.productPrice}
+                    </Text>
+                    <Text style={[styles.miniPriceText, { color: '#FFF' }]}>${item.discountPrice}</Text>
+                  </View>
+                ) : item.productPrice ? (
                   <View style={styles.miniPriceTag}>
                     <Text style={styles.miniPriceText}>${item.productPrice}</Text>
                   </View>
@@ -540,32 +598,33 @@ export default function ProfileScreen({ navigation, route }: any) {
         </TouchableOpacity>
       </Modal>
 
-      {/* 👇 NUEVO MODAL DE EDITAR PERFIL 👇 */}
-      <Modal visible={editMenuVisible} transparent={true} animationType="slide" onRequestClose={() => setEditMenuVisible(false)}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setEditMenuVisible(false)}>
-          <View style={styles.bottomSheet}>
-            <View style={styles.bottomSheetHandle} />
-            <Text style={styles.menuTitle}>Editar Perfil</Text>
+      {/* 👇 NUEVO MODAL PARA APLICAR OFERTA 👇 */}
+      <Modal visible={offerModalVisible} transparent={true} animationType="fade">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setOfferModalVisible(false)}>
+          <View style={[styles.bottomSheet, { minHeight: 200, paddingBottom: 20 }]}>
+            <Text style={styles.menuTitle}>Poner en Oferta</Text>
+            <Text style={{ color: COLORS.textMuted, textAlign: 'center', marginBottom: 20 }}>
+              Precio original: ${selectedVideoToOffer?.productPrice}
+            </Text>
+            
+            {/* Input para el nuevo precio */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderRadius: 10, paddingHorizontal: 15, marginBottom: 20, borderWidth: 1, borderColor: '#333' }}>
+              <Text style={{ color: COLORS.text, fontSize: 18, marginRight: 10 }}>$</Text>
+              <TextInput 
+                style={{ flex: 1, color: COLORS.text, fontSize: 18, paddingVertical: 12 }} 
+                placeholder="Nuevo precio rebajado" 
+                placeholderTextColor={COLORS.textMuted}
+                keyboardType="numeric"
+                value={newDiscountPrice}
+                onChangeText={setNewDiscountPrice}
+              />
+            </View>
 
-            <TouchableOpacity style={styles.menuItem} onPress={() => { setEditMenuVisible(false); handleChangeAvatar(); }}>
-              <Ionicons name="camera-outline" size={24} color={COLORS.text} />
-              <Text style={styles.menuItemText}>Cambiar foto de perfil</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.menuItem} onPress={() => {
-              setEditMenuVisible(false);
-              Alert.alert("Descripción", "Abre modal para añadir descripción corta.");
-            }}>
-              <Ionicons name="text-outline" size={24} color={COLORS.text} />
-              <Text style={styles.menuItemText}>+ Añadir descripción corta</Text>
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            {/* Opción para testing: Quitar verificación */}
-            <TouchableOpacity style={styles.menuItem} onPress={handleRemoveVerification}>
-              <Ionicons name="close-circle-outline" size={24} color="#FF2D55" />
-              <Text style={[styles.menuItemText, { color: '#FF2D55' }]}>[Test] Quitar Verificación</Text>
+            <TouchableOpacity 
+              style={[styles.publishButton, { width: '100%', justifyContent: 'center' }]} 
+              onPress={handleApplyOffer}
+            >
+              <Text style={styles.publishButtonText}>Aplicar Descuento</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

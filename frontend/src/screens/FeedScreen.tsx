@@ -183,7 +183,7 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted }
     setLoadingComments(true);
     try {
       const response = await axios.get(`${BASE_URL}/videos/${item.id}/comments`);
-      setComments(response.data || []);
+      setComments((response.data || []).reverse());
     } catch (error) {
       console.log("Error al cargar comentarios", error);
     } finally {
@@ -244,9 +244,21 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted }
               <TouchableOpacity style={styles.productTag}>
                 <Ionicons name="cart" size={16} color="#000" />
                 <Text style={styles.productName} numberOfLines={1}>{item.productName}</Text>
-                {item.productPrice ? (
-                  <Text style={styles.productPrice}>${item.productPrice.toFixed(2)}</Text>
+                
+                {/* 👇 AHORA SÍ LEEMOS EL DESCUENTO 👇 */}
+                {item.discountPrice ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ color: '#555', textDecorationLine: 'line-through', fontSize: 11, marginRight: 5 }}>
+                      ${item.productPrice}
+                    </Text>
+                    <Text style={[styles.productPrice, { color: '#b829db' }]}>
+                      ${item.discountPrice}
+                    </Text>
+                  </View>
+                ) : item.productPrice ? (
+                  <Text style={styles.productPrice}>${item.productPrice}</Text>
                 ) : null}
+
                 <Ionicons name="chevron-forward" size={14} color="#000" />
               </TouchableOpacity>
             ) : null}
@@ -293,8 +305,19 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted }
       </PanGestureHandler>
 
       <Modal visible={showComments} animationType="slide" transparent={true} onRequestClose={() => setShowComments(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalContainer}>
-          <View style={[styles.bottomSheet, { height: Dimensions.get('window').height * 0.5, paddingBottom: Math.max(insets.bottom, 15) }]}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : "height"} 
+          keyboardVerticalOffset={Platform.OS === "android" ? 20 : 0}
+          style={styles.modalContainer}
+        >
+          {/* 👇 2. Aumentamos el padding inferior en Android para alejarlo de los botones del celular 👇 */}
+          <View style={[
+            styles.bottomSheet, 
+            { 
+              height: Dimensions.get('window').height * 0.5, 
+              paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 35) : Math.max(insets.bottom, 15) 
+            }
+          ]}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Comentarios</Text>
               <TouchableOpacity onPress={() => setShowComments(false)}>
@@ -357,6 +380,12 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('Para ti'); 
 
+  // 👇 1. NUEVA FUNCIÓN: Cambia la pestaña y reinicia el video al primero 👇
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setActiveIndex(0);
+  };
+
   // 👇 Estado global de Mute manejado desde la pantalla principal 👇
   const [isGlobalMuted, setIsGlobalMuted] = useState(false);
 
@@ -369,7 +398,11 @@ export default function FeedScreen() {
 
   const fetchVideos = async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/videos/feed`);
+      // 👇 1. ENVIAMOS EL TOKEN AL SERVIDOR PARA QUE SEPA QUIÉNES SOMOS 👇
+      const token = await AsyncStorage.getItem('userToken');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const response = await axios.get(`${BASE_URL}/videos/feed`, { headers });
       setVideos(response.data);
     } catch (error) {
       console.error("Error al traer videos:", error);
@@ -406,6 +439,20 @@ export default function FeedScreen() {
 
   const keyExtractor = useCallback((item: any) => item.id, []);
 
+  // 👇 2. NUEVO FILTRO: Oculta los remates en "Para ti" 👇
+  const filteredVideos = videos.filter(video => {
+    if (activeTab === 'Ofertas') {
+      // 👈 AHORA BUSCA VIDEOS CON PRECIO REBAJADO (OFERTAS)
+      return video.discountPrice != null; 
+    }
+    if (activeTab === 'Siguiendo') {
+      return video.isFollowing === true; // Muestra solo a los que sigues
+    }
+    // Pestaña 'Para ti': Muestra todos los videos del feed 
+    // (El backend ya se encargó de ocultar los remates con el candado)
+    return true; 
+  });
+  
   if (loading) {
     return (
       <View style={[styles.videoContainer, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -416,17 +463,20 @@ export default function FeedScreen() {
 
   return (
     <View style={styles.mainContainer}>
+      
+      {/* 👇 AQUÍ ESTÁ LA MAGIA: Volvemos a poner el topNavContainer 👇 */}
       <View style={styles.topNavContainer}>
+        
         <View style={styles.topNavTabs}>
-          <TouchableOpacity onPress={() => setActiveTab('Siguiendo')}>
+          <TouchableOpacity onPress={() => handleTabChange('Siguiendo')}>
             <Text style={activeTab === 'Siguiendo' ? styles.topNavTextActive : styles.topNavTextInactive}>Siguiendo</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity onPress={() => setActiveTab('Ofertas')}>
+          <TouchableOpacity onPress={() => handleTabChange('Ofertas')}>
             <Text style={activeTab === 'Ofertas' ? styles.topNavTextActive : styles.topNavTextInactive}>Ofertas</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => setActiveTab('Para ti')}>
+          <TouchableOpacity onPress={() => handleTabChange('Para ti')}>
             <Text style={activeTab === 'Para ti' ? styles.topNavTextActive : styles.topNavTextInactive}>Para ti</Text>
           </TouchableOpacity>
         </View>
@@ -434,10 +484,11 @@ export default function FeedScreen() {
         <TouchableOpacity style={styles.topNavSearch} onPress={() => navigation.navigate('Buscar')}>
           <Ionicons name="search" size={28} color="rgba(255,255,255,0.8)" />
         </TouchableOpacity>
+        
       </View>
 
       <FlatList
-        data={videos}
+        data={filteredVideos}
         renderItem={renderItem}          // 👈 Usamos la función memorizada
         keyExtractor={keyExtractor}      // 👈 Usamos la llave memorizada
         pagingEnabled 
@@ -466,12 +517,12 @@ const styles = StyleSheet.create({
   darkOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)' },
   
   // 👇 TEXTOS MÁS PEQUEÑOS Y MÁS ABAJO 👇
-  infoOverlay: { position: 'absolute', bottom: 70, left: 15, right: 75},
+  infoOverlay: { position: 'absolute', bottom: 50, left: 15, right: 75},
   username: { color: COLORS.text, fontSize: 15, fontWeight: 'bold', marginBottom: 10, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
   description: { color: COLORS.text, fontSize: 13, marginBottom: 30, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
   
   // 👇 MENÚ LATERAL MÁS ABAJO 👇
-  actionOverlay: { position: 'absolute', bottom: 100, right: 10, alignItems: 'center' },
+  actionOverlay: { position: 'absolute', bottom: 70, right: 10, alignItems: 'center' },
   actionButton: { alignItems: 'center', marginBottom: 20 },
   actionText: {
     color: 'rgba(255,255,255,0.9)',

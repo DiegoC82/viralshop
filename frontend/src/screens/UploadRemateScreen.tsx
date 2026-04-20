@@ -62,7 +62,11 @@ export default function UploadRemateScreen({ navigation }: any) {
 
     } catch (error: any) {
       console.error("Error al subir remate:", error.response?.data || error.message);
-      Alert.alert("Error", "Hubo un problema al subir tu remate. Intenta de nuevo.");
+      
+      // 👇 Ahora la alerta te mostrará el texto real del error 👇
+      const mensajeReal = error.response?.data?.message || error.message || "Error desconocido";
+      Alert.alert("Fallo Técnico 🚨", mensajeReal);
+      
     } finally {
       setLoading(false);
     }
