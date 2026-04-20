@@ -21,7 +21,7 @@ export class VideosService {
 
   async getFeed(currentUserId?: string) {
     const videos = await this.prisma.video.findMany({ 
-      where: { isAuction: false }, // 👈 ¡VOLVEMOS A PONER EL CANDADO!
+      where: { isAuction: false , is18Plus: false}, // 👈 ¡VOLVEMOS A PONER EL CANDADO!
       include: { 
         user: true,
         _count: {
@@ -111,13 +111,15 @@ export class VideosService {
   async createVideo(
     userId: string, description: string, playbackId: string, 
     productName?: string, productPrice?: number, productLink?: string,
-    category?: string, subCategory?: string, latitude?: number, longitude?: number
+    category?: string, subCategory?: string, latitude?: number, longitude?: number,
+    is18Plus?: boolean
   ) {
     const videoUrl = `https://stream.mux.com/${playbackId}.m3u8`;
     const newVideo = await this.prisma.video.create({
       data: { 
         userId, description, videoUrl, productName, productPrice, productLink,
-        category, subCategory, latitude, longitude
+        category, subCategory, latitude, longitude,
+        is18Plus: is18Plus || false
       },
     });
     return { message: '¡Video publicado con éxito!', video: newVideo };
@@ -125,7 +127,7 @@ export class VideosService {
 
   async searchVideos(query?: string, category?: string, subcategory?: string, lat?: string, lng?: string, radius?: string) {
     const whereClause: any = {
-      isAuction: false // 👈 CANDADO TAMBIÉN EN EL BUSCADOR
+      isAuction: false, is18Plus: false // 👈 CANDADO TAMBIÉN EN EL BUSCADOR
     };
 
     if (query) {
@@ -156,6 +158,20 @@ export class VideosService {
   }
 
   // ==========================================
+  // 👇 FEED EXCLUSIVO +18 👇
+  // ==========================================
+  async getAdultFeed() {
+    return this.prisma.video.findMany({
+      where: { is18Plus: true }, // 👈 AQUÍ SOLO ENTRAN LOS +18
+      include: { 
+        user: true,
+        _count: { select: { likes: true, comments: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  // ==========================================
   // 👇 FUNCIONES PARA REMATES (SUBASTAS) 👇
   // ==========================================
 
@@ -177,6 +193,7 @@ export class VideosService {
     return this.prisma.video.findMany({
       where: {
         isAuction: true,
+        is18Plus: false,
         auctionEndsAt: { gt: new Date() }
       },
       include: { 
@@ -216,6 +233,34 @@ export class VideosService {
       data: { discountPrice } // Guarda el precio de oferta
     });
   }
+  
+  // ==========================================
+  // Borrar videos (solo para el dueño del video o admin)
+  // ==========================================
+
+  async deleteVideo(videoId: string, userId: string) {
+    const video = await this.prisma.video.findUnique({ where: { id: videoId } });
+    
+    // Verificamos que el video exista y que le pertenezca a quien intenta borrarlo
+    if (!video || video.userId !== userId) {
+      throw new Error('No autorizado o video no encontrado');
+    }
+
+    // Lo eliminamos de la base de datos
+    return this.prisma.video.delete({
+      where: { id: videoId }
+    });
+  }
+
+  async updateThumbnailTime(videoId: string, userId: string, time: number) {
+  const video = await this.prisma.video.findUnique({ where: { id: videoId } });
+  if (!video || video.userId !== userId) throw new Error('No autorizado');
+
+  return this.prisma.video.update({
+    where: { id: videoId },
+    data: { thumbnailTime: time }
+  });
+}
 
   // ==========================================
   // ⚖️ EL ROBOT AUTOMÁTICO QUE CIERRA REMATES

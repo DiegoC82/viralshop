@@ -1,5 +1,5 @@
 // backend/src/videos/videos.controller.ts
-import { Controller, Get, Post, Param, Patch, UseGuards, Request, Body, UseInterceptors, UploadedFile, BadRequestException, Query, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Param, Patch, Delete, UseGuards, Request, Body, UseInterceptors, UploadedFile, BadRequestException, Query, HttpException, HttpStatus } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -28,6 +28,12 @@ export class VideosController {
       }
     }
     return this.videosService.getFeed(userId);
+  }
+
+  @UseGuards(JwtAuthGuard) // 👈 Solo usuarios logueados
+  @Get('adult-feed')
+  getAdultFeed() {
+    return this.videosService.getAdultFeed();
   }
 
   @Get('search')
@@ -74,6 +80,12 @@ export class VideosController {
     return this.videosService.toggleSave(videoId, userId);
   }
 
+  @UseGuards(JwtAuthGuard)
+@Patch(':id/thumbnail')
+async setThumbnail(@Param('id') videoId: string, @Body('time') time: number, @Request() req: any) {
+  return this.videosService.updateThumbnailTime(videoId, req.user.sub, time);
+}
+
   // ---------------------------------------------------
 
   @UseGuards(JwtAuthGuard)
@@ -97,6 +109,7 @@ export class VideosController {
     @Body('subCategory') subCategory: string,
     @Body('latitude') latitude: string,
     @Body('longitude') longitude: string,
+    @Body('is18Plus') is18Plus: string,
     @Request() req: any
   ) {
     if (!file) throw new BadRequestException('No se envió ningún video');
@@ -109,11 +122,12 @@ export class VideosController {
     const price = productPrice ? parseFloat(productPrice) : null;
     const lat = latitude ? parseFloat(latitude) : null;
     const lng = longitude ? parseFloat(longitude) : null;
+    const isAdultContent = is18Plus === 'true';
 
     // Se lo pasamos al servicio para que lo guarde en la BD
     return this.videosService.createVideo(
       userId, description, playbackId, productName, price, productLink, 
-      category, subCategory, lat, lng
+      category, subCategory, lat, lng, isAdultContent
     );
   }
 
@@ -122,6 +136,13 @@ export class VideosController {
   @Patch(':id/oferta')
   async setDiscount(@Param('id') videoId: string, @Body('discountPrice') discountPrice: number, @Request() req: any) {
     return this.videosService.setDiscount(videoId, req.user.sub, discountPrice);
+  }
+
+  // 👇 NUEVO: Ruta para eliminar un video
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async deleteVideo(@Param('id') videoId: string, @Request() req: any) {
+    return this.videosService.deleteVideo(videoId, req.user.sub);
   }
 
   // ==========================================

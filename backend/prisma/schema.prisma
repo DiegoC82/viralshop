@@ -59,6 +59,7 @@ model Video {
   productPrice Float?
   discountPrice   Float?   // 👈 NUEVO: Precio rebajado (Oferta)
   productLink  String?
+  thumbnailTime   Int      @default(1) // 👈 Nuevo: Segundo elegido para la portada
 
   // 👇 1. NUEVOS CAMPOS DE FILTROS Y MAPA 👇
   category     String?
@@ -71,6 +72,7 @@ model Video {
 
   // 👇 NUEVOS CAMPOS PARA REMATES 👇
   isAuction     Boolean   @default(false)
+  is18Plus        Boolean      @default(false) // 👈 NUEVO: Marcador de contenido adulto
   auctionEndsAt DateTime?
   isAuctionClosed Boolean   @default(false) // <-- ¡Añadimos esto!
   bids          Bid[]     @relation("VideoBids")
