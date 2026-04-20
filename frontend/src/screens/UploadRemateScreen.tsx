@@ -10,12 +10,16 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../theme/colors';
+import { useCurrency } from '../context/CurrencyContext';
+import { formatCurrency } from '../utils/formatters';
 
 export default function UploadRemateScreen({ navigation }: any) {
   const [video, setVideo] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [basePrice, setBasePrice] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const { currency, exchangeRate } = useCurrency(); // 👈 Llama a tu cerebro global
 
   const pickVideo = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -111,18 +115,24 @@ export default function UploadRemateScreen({ navigation }: any) {
             onChangeText={setTitle}
           />
 
-          <Text style={styles.inputLabel}>Precio Base (ARS)</Text>
-          <View style={styles.priceInputContainer}>
-            <Text style={styles.currencySymbol}>$</Text>
-            <TextInput 
-              style={styles.priceInput}
-              placeholder="0.00"
-              placeholderTextColor="#666"
-              keyboardType="numeric"
-              value={basePrice}
-              onChangeText={setBasePrice}
-            />
-          </View>
+          <Text style={styles.inputLabel}>Precio Base ({currency})</Text>
+<View style={styles.priceInputContainer}>
+  <Text style={styles.currencySymbol}>
+    {currency === 'ARS' ? '$' : 'u$d'} 
+  </Text>
+  <TextInput 
+    style={styles.priceInput}
+    placeholder="0,00"
+    placeholderTextColor="#666"
+    keyboardType="numeric"
+    value={basePrice}
+    onChangeText={setBasePrice}
+  />
+</View>
+{/* 👇 Agregamos una vista previa de cómo queda el precio 👇 */}
+<Text style={styles.infoText}>
+  Se verá como: {formatCurrency(parseFloat(basePrice) || 0, currency, exchangeRate)}
+</Text>
           <Text style={styles.infoText}>
             * El remate comenzará con este valor y durará exactamente 24 horas.
           </Text>

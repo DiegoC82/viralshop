@@ -9,6 +9,8 @@ import { LOCATIONS_DATA } from '../data/locations';
 import * as Location from 'expo-location'; 
 import axios from 'axios';
 import { COLORS } from '../theme/colors';
+import { useCurrency } from '../context/CurrencyContext';
+import { formatCurrency } from '../utils/formatters';
 
 const { width, height } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3;
@@ -34,6 +36,8 @@ export default function SearchScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const route = useRoute<any>(); 
   const mapFilters = route.params || {};
+
+  const { currency, toggleCurrency, exchangeRate } = useCurrency();
   
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
@@ -178,7 +182,7 @@ export default function SearchScreen({ navigation }: any) {
 
   const categoryButtonText = selectedMainCat !== 'Todos' 
     ? (selectedSubCat ? selectedSubCat.name : selectedMainCat) 
-    : 'Filtrar por categoría';
+    : 'Categoría';
 
   const currentIcon = selectedSubCat?.icon || mainCatIcon;
 
@@ -231,6 +235,15 @@ export default function SearchScreen({ navigation }: any) {
               />
             </TouchableOpacity>
           </ScrollView>
+
+          {/* 👇 3. NUEVO BOTÓN CAMBIADOR DE MONEDA RÁPIDO 👇 */}
+          <TouchableOpacity 
+            style={[styles.mapButton, { marginRight: 8, width: 'auto', paddingHorizontal: 12, backgroundColor: COLORS.surface }]} 
+            onPress={toggleCurrency}
+          >
+            <Ionicons name="cash-outline" size={16} color={COLORS.accent} style={{ marginRight: 4 }} />
+            <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: 'bold' }}>{currency}</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity 
             style={[styles.mapButton, mapFilters && mapFilters.mapRadius && { backgroundColor: COLORS.primary }]} 
@@ -354,18 +367,22 @@ export default function SearchScreen({ navigation }: any) {
                   <Text style={styles.videoDetailText} numberOfLines={1}>{item.description}</Text>
                 </View>
 
-                {/* Fila inferior: Precios (Normal o en Oferta tachado) */}
+                {/* 👇 4. APLICAMOS LA CONVERSIÓN EN VIVO 👇 */}
                 <View style={styles.bottomDataRow}>
                   {item.discountPrice ? (
                     <View style={[styles.miniPriceTag, { backgroundColor: '#FF2D55', flexDirection: 'row', alignItems: 'center' }]}>
                       <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 9, textDecorationLine: 'line-through', marginRight: 4 }}>
-                        ${item.productPrice}
+                        {formatCurrency(item.productPrice, currency, exchangeRate)}
                       </Text>
-                      <Text style={[styles.miniPriceText, { color: '#FFF' }]}>${item.discountPrice}</Text>
+                      <Text style={[styles.miniPriceText, { color: '#FFF' }]}>
+                        {formatCurrency(item.discountPrice, currency, exchangeRate)}
+                      </Text>
                     </View>
                   ) : item.productPrice ? (
                     <View style={styles.miniPriceTag}>
-                      <Text style={styles.miniPriceText}>${item.productPrice}</Text>
+                      <Text style={styles.miniPriceText}>
+                        {formatCurrency(item.productPrice, currency, exchangeRate)}
+                      </Text>
                     </View>
                   ) : <View />}
                 </View>

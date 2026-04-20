@@ -9,6 +9,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { COLORS } from '../theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Switch } from 'react-native'; // 👈 Asegúrate de importar Switch
+import { useCurrency } from '../context/CurrencyContext';
+import { formatCurrency } from '../utils/formatters';
 
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
@@ -99,6 +102,8 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted }
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
+
+  const { currency, exchangeRate } = useCurrency(); // 👈 Llama a tu cerebro global
 
   const goToProfile = (userIdToNavigate: string) => {
     setShowComments(false); 
@@ -249,14 +254,16 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted }
                 {item.discountPrice ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={{ color: '#555', textDecorationLine: 'line-through', fontSize: 11, marginRight: 5 }}>
-                      ${item.productPrice}
+                      {formatCurrency(item.productPrice, currency, exchangeRate)}
                     </Text>
                     <Text style={[styles.productPrice, { color: '#b829db' }]}>
-                      ${item.discountPrice}
+                      {formatCurrency(item.discountPrice, currency, exchangeRate)}
                     </Text>
                   </View>
                 ) : item.productPrice ? (
-                  <Text style={styles.productPrice}>${item.productPrice}</Text>
+                  <Text style={styles.productPrice}>
+                    {formatCurrency(item.productPrice, currency, exchangeRate)}
+                  </Text>
                 ) : null}
 
                 <Ionicons name="chevron-forward" size={14} color="#000" />

@@ -1,6 +1,6 @@
 // frontend/src/screens/UploadScreen.tsx
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Modal, FlatList, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location'; // 👇 IMPORTAMOS EL GPS 👇
@@ -9,107 +9,9 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS } from '../theme/colors';
+import { CATEGORIES_DATA } from '../data/categories';
 
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
-
-const CATEGORIES_DATA = [
-  { 
-    id: 'tech', 
-    name: 'Tecnología', 
-    subcategories: [
-      { id: 'tech_all', name: 'Todo Tecnología', icon: 'hardware-chip-outline' },
-      { id: 'phones', name: 'Celulares', icon: 'phone-portrait-outline' },
-      { id: 'pc', name: 'Computación', icon: 'laptop-outline' },
-      { id: 'audio', name: 'Audio y Video', icon: 'headset-outline' },
-      { id: 'gaming', name: 'Videojuegos', icon: 'game-controller-outline' },
-      { id: 'smartwatch', name: 'Smartwatches', icon: 'watch-outline' },
-    ] 
-  },
-  { 
-    id: 'fashion', 
-    name: 'Moda', 
-    subcategories: [
-      { id: 'fashion_all', name: 'Todo Moda', icon: 'pricetag-outline' },
-      { id: 'clothes', name: 'Ropa', icon: 'shirt-outline' },
-      { id: 'shoes', name: 'Calzado', icon: 'walk-outline' },
-      { id: 'accessories', name: 'Accesorios', icon: 'glasses-outline' },
-      { id: 'jewelry', name: 'Joyas y Relojes', icon: 'diamond-outline' },
-    ] 
-  },
-  { 
-    id: 'home', 
-    name: 'Hogar y Muebles', 
-    subcategories: [
-      { id: 'home_all', name: 'Todo Hogar', icon: 'home-outline' },
-      { id: 'furniture', name: 'Muebles', icon: 'bed-outline' },
-      { id: 'appliances', name: 'Electrodomésticos', icon: 'tv-outline' },
-      { id: 'deco', name: 'Decoración', icon: 'color-palette-outline' },
-      { id: 'garden', name: 'Jardín y Aire Libre', icon: 'leaf-outline' },
-    ] 
-  },
-  { 
-    id: 'services',
-    name: 'Servicios', 
-    subcategories: [
-      { id: 'services_all', name: 'Todo Servicios', icon: 'briefcase-outline' },
-      { id: 'home_repairs', name: 'Reparaciones del Hogar', icon: 'construct-outline' },
-      { id: 'tech_support', name: 'Soporte Técnico', icon: 'desktop-outline' },
-      { id: 'classes', name: 'Cursos y Clases', icon: 'school-outline' },
-      { id: 'events', name: 'Eventos y Fiestas', icon: 'musical-notes-outline' },
-      { id: 'health_beauty', name: 'Salud y Belleza', icon: 'medkit-outline' },
-    ] 
-  },
-  { 
-    id: 'food_and_drinks', 
-    name: 'Comida y Bebidas', 
-    subcategories: [
-      { id: 'food_all', name: 'Todo Comida y Bebidas', icon: 'cart-outline' },
-      { id: 'food', name: 'Alimentos', icon: 'restaurant-outline' },
-      { id: 'drinks', name: 'Bebidas', icon: 'wine-outline' },
-      { id: 'snacks', name: 'Snacks y Postres', icon: 'ice-cream-outline' },
-    ] 
-  },
-  { 
-    id: 'sports', 
-    name: 'Deportes', 
-    subcategories: [
-      { id: 'sports_all', name: 'Todo Deportes', icon: 'football-outline' },
-      { id: 'fitness', name: 'Fitness y Gym', icon: 'barbell-outline' },
-      { id: 'cycling', name: 'Ciclismo', icon: 'bicycle-outline' },
-      { id: 'camping', name: 'Camping', icon: 'bonfire-outline' },
-    ] 
-  },
-  { 
-    id: 'beauty', 
-    name: 'Belleza y Salud', 
-    subcategories: [
-      { id: 'beauty_all', name: 'Todo Belleza', icon: 'sparkles-outline' },
-      { id: 'makeup', name: 'Maquillaje', icon: 'color-wand-outline' },
-      { id: 'skincare', name: 'Cuidado Facial', icon: 'water-outline' },
-      { id: 'perfumes', name: 'Perfumes', icon: 'flask-outline' },
-      { id: 'hair', name: 'Cuidado del Cabello', icon: 'cut-outline' },
-    ] 
-  },
-  { 
-    id: 'vehicles', 
-    name: 'Vehículos', 
-    subcategories: [
-      { id: 'vehicles_all', name: 'Todo Vehículos', icon: 'car-outline' },
-      { id: 'auto_parts', name: 'Accesorios Autos', icon: 'build-outline' },
-      { id: 'moto_parts', name: 'Accesorios Motos', icon: 'speedometer-outline' },
-      { id: 'audio_car', name: 'Audio para Vehículos', icon: 'radio-outline' },
-    ] 
-  },
-  { 
-    id: 'tools', 
-    name: 'Herramientas', 
-    subcategories: [
-      { id: 'tools_all', name: 'Todo Herramientas', icon: 'hammer-outline' },
-      { id: 'electric', name: 'Eléctricas', icon: 'flash-outline' },
-      { id: 'manual', name: 'Manuales', icon: 'construct-outline' },
-    ] 
-  }
-];
 
 export default function UploadScreen({ navigation }: any) {
   const [videoUri, setVideoUri] = useState<string | null>(null);
@@ -118,6 +20,7 @@ export default function UploadScreen({ navigation }: any) {
   const [productPrice, setProductPrice] = useState('');
   const [productLink, setProductLink] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [is18Plus, setIs18Plus] = useState(false);
 
   // Estados de Clasificación
   const [selectedCategory, setSelectedCategory] = useState<{ id: string, name: string, subcategories: any[] } | null>(null);
@@ -244,6 +147,8 @@ export default function UploadScreen({ navigation }: any) {
       // Enviamos las coordenadas reales obtenidas por el GPS
       formData.append('latitude', coords.lat.toString());
       formData.append('longitude', coords.lng.toString());
+
+      formData.append('is18Plus', is18Plus.toString());
       
       formData.append('video', {
         uri: videoUri,
@@ -401,6 +306,25 @@ export default function UploadScreen({ navigation }: any) {
                   <Ionicons name="chevron-down" size={20} color={COLORS.textMuted} />
                 </TouchableOpacity>
               )}
+
+              {/* 👇 NUEVO SWITCH DE CONTENIDO +18 👇 */}
+              <View style={styles.adultSwitchContainer}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <View style={styles.adultIconWrap}>
+                    <Ionicons name="moon" size={20} color="#b829db" />
+                  </View>
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    <Text style={styles.adultSwitchTitle}>ViralShop Midnight (+18)</Text>
+                    <Text style={styles.adultSwitchDesc}>Este contenido se ocultará del feed principal.</Text>
+                  </View>
+                </View>
+                <Switch
+                  value={is18Plus}
+                  onValueChange={setIs18Plus}
+                  trackColor={{ false: '#333', true: '#b829db' }}
+                  thumbColor={'#FFF'}
+                />
+              </View>
               
               <View style={styles.buttonsRow}>
                 <TouchableOpacity style={styles.cancelButton} onPress={() => setVideoUri(null)} disabled={isUploading}>
@@ -422,7 +346,7 @@ export default function UploadScreen({ navigation }: any) {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Categoría Principal</Text>
             <FlatList
-              data={CATEGORIES_DATA}
+              data={CATEGORIES_DATA.filter(cat => cat.id !== 'all')}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.modalItem} onPress={() => { setSelectedCategory(item); setSelectedSubCategory(null); setCatModalVisible(false); }}>
@@ -497,5 +421,29 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, marginBottom: 15, textAlign: 'center' },
   modalItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#1A0E2A' },
   modalItemText: { color: COLORS.text, fontSize: 16 },
-  modalCloseBtn: { marginTop: 20, padding: 15, alignItems: 'center', backgroundColor: '#333', borderRadius: 10 }
+  modalCloseBtn: { marginTop: 20, padding: 15, alignItems: 'center', backgroundColor: '#333', borderRadius: 10 },
+
+  // 👇 Estilos del Switch Midnight 👇
+  adultSwitchContainer: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(184, 41, 219, 0.05)', 
+    padding: 15, 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: 'rgba(184, 41, 219, 0.3)', 
+    marginTop: 25 
+  },
+  adultIconWrap: { 
+    width: 36, 
+    height: 36, 
+    borderRadius: 18, 
+    backgroundColor: 'rgba(184, 41, 219, 0.15)', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 12 
+  },
+  adultSwitchTitle: { color: '#b829db', fontSize: 15, fontWeight: 'bold', marginBottom: 2 },
+  adultSwitchDesc: { color: '#AAA', fontSize: 12, lineHeight: 16 },
 });

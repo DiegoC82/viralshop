@@ -11,14 +11,18 @@ import {
   ActivityIndicator, 
   Alert,
   TextInput,
-  Modal 
+  Modal
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CATEGORIES_DATA } from '../data/categories';
 import axios from 'axios';
+import { Switch } from 'react-native'; // 👈 Asegúrate de importar Switch
+import { useCurrency } from '../context/CurrencyContext';
+import { formatCurrency } from '../utils/formatters';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Slider from '@react-native-community/slider';
 import { COLORS } from '../theme/colors';
 
 const { width } = Dimensions.get('window');
@@ -28,13 +32,19 @@ const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 export default function ProfileScreen({ navigation, route }: any) {
   // Estados de Datos
   const [profile, setProfile] = useState<any>(null);
-  
+  const { currency, toggleCurrency, exchangeRate } = useCurrency(); // 👈 Llama a tu cerebro global
   // Estados de UI y Auth
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
-  const [activeTab, setActiveTab] = useState<'uploaded' | 'liked' | 'remates' | 'metrics'>('uploaded');
+  const [activeTab, setActiveTab] = useState<'uploaded' | 'ofertas' | 'liked' | 'remates' | 'metrics'>('uploaded');
   const [menuVisible, setMenuVisible] = useState(false);
+
+  // Estados para ViralShop Midnight (+18)
+  const [midnightVisible, setMidnightVisible] = useState(false);
+  const [midnightStep, setMidnightStep] = useState<'warning' | 'pin'>('warning');
+  const [enteredPassword, setEnteredPassword] = useState('');
+  const [pinError, setPinError] = useState(false);
   
   // 👇 1. AGREGAR ESTOS ESTADOS Y FUNCIONES NUEVAS 👇
   const [editMenuVisible, setEditMenuVisible] = useState(false);
@@ -141,6 +151,27 @@ export default function ProfileScreen({ navigation, route }: any) {
     }
   };
 
+  const [tempThumbTime, setTempThumbTime] = useState(1);
+const [isSavingThumb, setIsSavingThumb] = useState(false);
+
+const handleSaveThumbnail = async () => {
+  setIsSavingThumb(true);
+  try {
+    const token = await AsyncStorage.getItem('userToken');
+    await axios.patch(`${BACKEND_URL}/videos/${selectedVideoToOffer.id}/thumbnail`, 
+      { time: tempThumbTime },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    Alert.alert("¡Portada actualizada!", "La nueva imagen se verá en el feed en unos momentos.");
+    setOfferModalVisible(false);
+    checkAuthAndFetchProfile();
+  } catch (error) {
+    Alert.alert("Error", "No se pudo guardar la portada.");
+  } finally {
+    setIsSavingThumb(false);
+  }
+};
+
   // 3. CERRAR SESIÓN (CORREGIDO)
   const handleLogout = async () => {
     try {
@@ -164,25 +195,37 @@ export default function ProfileScreen({ navigation, route }: any) {
   };
 
   // 4. GENERADOR DE MINIATURAS MUX
-  const getThumbnail = (videoUrl: string) => {
-    if (videoUrl && videoUrl.includes('mux.com')) {
-      const parts = videoUrl.split('/');
-      const filePart = parts[parts.length - 1];
-      const playbackId = filePart.split('.')[0];
-      return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=1`;
-    }
-    return 'https://via.placeholder.com/150';
-  };
+  const getThumbnail = (videoUrl: string, time: number = 1) => {
+  if (videoUrl && videoUrl.includes('mux.com')) {
+    const parts = videoUrl.split('/');
+    const playbackId = parts[parts.length - 1].split('.')[0];
+    return `https://image.mux.com/${playbackId}/thumbnail.jpg?time=${time}`;
+  }
+  return 'https://via.placeholder.com/150';
+};
+
 
   // 5. DETERMINAR QUÉ LISTA DE VIDEOS MOSTRAR SEGÚN EL TAB
   const getActiveData = () => {
     if (!profile) return [];
-    if (activeTab === 'uploaded') return profile.videos || [];
-    if (activeTab === 'liked') return (profile.likes || []).map((l: any) => l.video);
-    if (activeTab === 'remates') return (profile.videos || []).filter((v: any) => v.isAuction);
-    // 👇 SI ES MÉTRICAS, DEVOLVEMOS UN ARRAY CON UN SOLO OBJETO 👇
-    if (activeTab === 'metrics') return [{ id: 'metrics-view' }]; 
-    return [];
+    
+    switch (activeTab) {
+      case 'uploaded':
+        return profile.videos || [];
+      case 'ofertas':
+        // Filtra los videos que tienen un precio de descuento (oferta)
+        return (profile.videos || []).filter((v: any) => v.discountPrice != null && v.discountPrice > 0);
+      case 'liked':
+        // Extrae los videos de la tabla de "likes"
+        return (profile.likes || []).map((l: any) => l.video);
+      case 'remates':
+        // Filtra los videos que son remates/subastas
+        return (profile.videos || []).filter((v: any) => v.isAuction === true);
+      case 'metrics':
+        return [{ id: 'metrics-view' }];
+      default:
+        return [];
+    }
   };
 
   const handleApplyOffer = async () => {
@@ -199,6 +242,33 @@ export default function ProfileScreen({ navigation, route }: any) {
     } catch (error) {
       Alert.alert("Error", "No se pudo aplicar la oferta.");
     }
+  };
+
+  const handleDeleteVideo = () => {
+    Alert.alert(
+      "¿Eliminar Video?",
+      "Esta acción borrará el video permanentemente. ¿Estás seguro?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Eliminar", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('userToken');
+              await axios.delete(`${BACKEND_URL}/videos/${selectedVideoToOffer.id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              Alert.alert("Eliminado", "El video se borró con éxito.");
+              setOfferModalVisible(false);
+              checkAuthAndFetchProfile(); // Recarga el perfil para que desaparezca
+            } catch (error) {
+              Alert.alert("Error", "No se pudo eliminar el video.");
+            }
+          }
+        }
+      ]
+    );
   };
 
   // SUBCOMPONENTE: Estadísticas
@@ -220,6 +290,21 @@ export default function ProfileScreen({ navigation, route }: any) {
       </View>
     );
   }
+
+  const handleAdultPanelAccess = () => {
+    // Si algún día quieres bloquear a los no verificados, descomenta el if:
+    /*
+    if (!profile?.isVerified) {
+      Alert.alert("Acceso VIP", "Debes verificar tu identidad para entrar al Modo Nocturno.");
+      return;
+    }
+    */
+    setMenuVisible(false); // Cierra el menú lateral
+    setMidnightStep('warning'); // Inicia en la pantalla de advertencia
+    setEnteredPassword(''); // Limpia el PIN por si había algo
+    setPinError(false); // Limpia errores previos
+    setMidnightVisible(true); // Abre el Modal Premium
+  };
 
   // PANTALLA DE INVITADO
   if (isGuest) {
@@ -416,48 +501,31 @@ export default function ProfileScreen({ navigation, route }: any) {
               </View>
             </View>
 
-            {/* 3. TABS (Subidos, Likes, Guardados, Métricas) */}
+            {/* 3. TABS (Subidos, Ofertas, Likes, Remates, Métricas) */}
             <View style={styles.tabsRow}>
-              <TouchableOpacity 
-                style={[styles.tab, activeTab === 'uploaded' && styles.activeTab]} 
-                onPress={() => setTimeout(() => setActiveTab('uploaded'), 0)}
-              >
+              <TouchableOpacity style={[styles.tab, activeTab === 'uploaded' && styles.activeTab]} onPress={() => setActiveTab('uploaded')}>
                 <Ionicons name="grid-outline" size={24} color={activeTab === 'uploaded' ? COLORS.text : COLORS.textMuted} />
               </TouchableOpacity>
               
-              <TouchableOpacity 
-                style={[styles.tab, activeTab === 'liked' && styles.activeTab]} 
-                onPress={() => setTimeout(() => setActiveTab('liked'), 0)}
-              >
+              {/* 👇 NUEVA PESTAÑA: OFERTAS (Etiqueta de precio) 👇 */}
+              <TouchableOpacity style={[styles.tab, activeTab === 'ofertas' && styles.activeTab]} onPress={() => setActiveTab('ofertas')}>
+                <Ionicons name="pricetag-outline" size={24} color={activeTab === 'ofertas' ? COLORS.text : COLORS.textMuted} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={[styles.tab, activeTab === 'liked' && styles.activeTab]} onPress={() => setActiveTab('liked')}>
                 <Ionicons name="heart-outline" size={24} color={activeTab === 'liked' ? COLORS.text : COLORS.textMuted} />
               </TouchableOpacity>
               
-              <TouchableOpacity 
-                style={[styles.tab, activeTab === 'remates' && styles.activeTab]} 
-                onPress={() => setTimeout(() => setActiveTab('remates'), 0)}
-              >
-                {/* 👇 ÍCONO COMPUESTO MEDIANO PARA LA PESTAÑA 👇 */}
+              <TouchableOpacity style={[styles.tab, activeTab === 'remates' && styles.activeTab]} onPress={() => setActiveTab('remates')}>
                 <View style={{ width: 28, height: 28, justifyContent: 'center', alignItems: 'center' }}>
-                  <MaterialCommunityIcons
-                    name="gavel"
-                    size={22}
-                    color={activeTab === 'remates' ? COLORS.text : COLORS.textMuted}
-                    style={{ position: 'absolute', top: -2, right: 0, transform: [{ scaleX: -1 }, { rotate: '-15deg' }] }}
-                  />
-                  <View style={{ 
-                    position: 'absolute', bottom: 2, left: 0, 
-                    backgroundColor: activeTab === 'remates' ? COLORS.text : COLORS.textMuted, 
-                    borderRadius: 8, width: 14, height: 14, justifyContent: 'center', alignItems: 'center' 
-                  }}>
+                  <MaterialCommunityIcons name="gavel" size={22} color={activeTab === 'remates' ? COLORS.text : COLORS.textMuted} style={{ position: 'absolute', top: -2, right: 0, transform: [{ scaleX: -1 }, { rotate: '-15deg' }] }} />
+                  <View style={{ position: 'absolute', bottom: 2, left: 0, backgroundColor: activeTab === 'remates' ? COLORS.text : COLORS.textMuted, borderRadius: 8, width: 14, height: 14, justifyContent: 'center', alignItems: 'center' }}>
                     <Text style={{ color: COLORS.background, fontSize: 10, fontWeight: 'bold' }}>$</Text>
                   </View>
                 </View>
               </TouchableOpacity>
               
-              <TouchableOpacity 
-                style={[styles.tab, activeTab === 'metrics' && styles.activeTab]} 
-                onPress={() => setTimeout(() => setActiveTab('metrics'), 0)}
-              >
+              <TouchableOpacity style={[styles.tab, activeTab === 'metrics' && styles.activeTab]} onPress={() => setActiveTab('metrics')}>
                 <Ionicons name="stats-chart-outline" size={24} color={activeTab === 'metrics' ? COLORS.text : COLORS.textMuted} />
               </TouchableOpacity>
             </View>
@@ -533,17 +601,20 @@ export default function ProfileScreen({ navigation, route }: any) {
               </View>
 
               <View style={styles.bottomDataRow}>
-                {/* 👇 AQUÍ ESTÁ LA LÓGICA DE LOS DOS PRECIOS (NORMAL O TACHADO) 👇 */}
                 {item.discountPrice ? (
                   <View style={[styles.miniPriceTag, { backgroundColor: '#FF2D55', flexDirection: 'row', alignItems: 'center' }]}>
                     <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 9, textDecorationLine: 'line-through', marginRight: 4 }}>
-                      ${item.productPrice}
+                      {formatCurrency(item.productPrice, currency, exchangeRate)}
                     </Text>
-                    <Text style={[styles.miniPriceText, { color: '#FFF' }]}>${item.discountPrice}</Text>
+                    <Text style={[styles.miniPriceText, { color: '#FFF' }]}>
+                      {formatCurrency(item.discountPrice, currency, exchangeRate)}
+                    </Text>
                   </View>
                 ) : item.productPrice ? (
                   <View style={styles.miniPriceTag}>
-                    <Text style={styles.miniPriceText}>${item.productPrice}</Text>
+                    <Text style={styles.miniPriceText}>
+                      {formatCurrency(item.productPrice, currency, exchangeRate)}
+                    </Text>
                   </View>
                 ) : <View />}
 
@@ -566,6 +637,27 @@ export default function ProfileScreen({ navigation, route }: any) {
           <View style={styles.bottomSheet}>
             <View style={styles.bottomSheetHandle} />
             <Text style={styles.menuTitle}>Herramientas de cuenta</Text>
+
+            {/* 👇 NUEVO BOTÓN SWITCH DE MONEDA 👇 */}
+            <View style={[styles.menuItem, { justifyContent: 'space-between' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="cash-outline" size={24} color={COLORS.text} />
+                <Text style={styles.menuItemText}>Mostrar precios en USD</Text>
+              </View>
+              <Switch 
+                value={currency === 'USD'} 
+                onValueChange={toggleCurrency} 
+                trackColor={{ false: '#333', true: COLORS.accent }}
+                thumbColor={'#FFF'}
+              />
+            </View>
+
+            <TouchableOpacity style={styles.menuItem} onPress={handleAdultPanelAccess}>
+              <Ionicons name="moon-outline" size={24} color="#b829db" />
+              <Text style={[styles.menuItemText, { color: '#b829db', fontWeight: 'bold' }]}>Modo Nocturno (+18)</Text>
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
 
             <TouchableOpacity 
               style={styles.menuItem}
@@ -598,35 +690,175 @@ export default function ProfileScreen({ navigation, route }: any) {
         </TouchableOpacity>
       </Modal>
 
-      {/* 👇 NUEVO MODAL PARA APLICAR OFERTA 👇 */}
-      <Modal visible={offerModalVisible} transparent={true} animationType="fade">
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setOfferModalVisible(false)}>
-          <View style={[styles.bottomSheet, { minHeight: 200, paddingBottom: 20 }]}>
-            <Text style={styles.menuTitle}>Poner en Oferta</Text>
-            <Text style={{ color: COLORS.textMuted, textAlign: 'center', marginBottom: 20 }}>
-              Precio original: ${selectedVideoToOffer?.productPrice}
-            </Text>
+      {/* ========================================== */}
+      {/* 👇 MODAL VIRALSHOP MIDNIGHT (+18) 👇 */}
+      {/* ========================================== */}
+      <Modal visible={midnightVisible} transparent={true} animationType="slide">
+        <View style={styles.midnightOverlay}>
+          <View style={styles.midnightCard}>
             
-            {/* Input para el nuevo precio */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderRadius: 10, paddingHorizontal: 15, marginBottom: 20, borderWidth: 1, borderColor: '#333' }}>
-              <Text style={{ color: COLORS.text, fontSize: 18, marginRight: 10 }}>$</Text>
-              <TextInput 
-                style={{ flex: 1, color: COLORS.text, fontSize: 18, paddingVertical: 12 }} 
-                placeholder="Nuevo precio rebajado" 
-                placeholderTextColor={COLORS.textMuted}
-                keyboardType="numeric"
-                value={newDiscountPrice}
-                onChangeText={setNewDiscountPrice}
-              />
+            <TouchableOpacity style={styles.midnightCloseBtn} onPress={() => setMidnightVisible(false)}>
+              <Ionicons name="close" size={28} color="#888" />
+            </TouchableOpacity>
+
+            {midnightStep === 'warning' ? (
+              // --- PASO 1: LA ADVERTENCIA ---
+              <View style={styles.midnightContent}>
+                <View style={styles.neonIconContainer}>
+                  <Ionicons name="moon-outline" size={40} color="#b829db" />
+                </View>
+                <Text style={styles.midnightTitle}>Modo <Text style={{color: '#b829db', fontStyle: 'italic'}}>Nocturno</Text></Text>
+                
+                <Text style={styles.midnightDesc}>
+                  Estás a punto de ingresar al lado sin censura de nuestra comunidad. Este espacio es exclusivo para adultos.
+                </Text>
+
+                <View style={styles.ageTag}>
+                  <Text style={styles.ageTagText}>CONTENIDO +18</Text>
+                </View>
+
+                <TouchableOpacity style={styles.neonButton} onPress={() => setMidnightStep('pin')}>
+                  <Text style={styles.neonButtonText}>Soy mayor de edad, entrar</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              // --- PASO 2: EL PIN NEÓN ---
+              <View style={styles.midnightContent}>
+                <Ionicons name="key-outline" size={32} color={pinError ? "#FF2D55" : "#b829db"} style={{ marginBottom: 15 }} />
+                <Text style={styles.midnightTitle}>Pase VIP</Text>
+                <Text style={styles.midnightDesc}>
+                  {pinError ? "El código es incorrecto." : "Ingresa tu PIN de 6 dígitos para continuar."}
+                </Text>
+
+                <TextInput 
+                  style={[styles.midnightInput, pinError && { borderColor: '#FF2D55', color: '#FF2D55' }]} 
+                  secureTextEntry={true} 
+                  placeholder="••••••" 
+                  placeholderTextColor="#444"
+                  keyboardType="numeric"
+                  maxLength={6}
+                  value={enteredPassword}
+                  onChangeText={(text) => {
+                    setEnteredPassword(text);
+                    setPinError(false);
+                    // Validación automática
+                    if (text.length === 6) {
+                      if (text === '123456') { // Contraseña provisoria
+                        setMidnightVisible(false);
+                        setEnteredPassword('');
+                        navigation.navigate('AdultFeed');
+                      } else {
+                        setPinError(true);
+                        setTimeout(() => setEnteredPassword(''), 500);
+                      }
+                    }
+                  }}
+                  autoFocus={true} 
+                />
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ========================================== */}
+      {/* 👇 MODAL UNIFICADO: OPCIONES DE PRODUCTO 👇 */}
+      {/* ========================================== */}
+      <Modal visible={offerModalVisible} transparent={true} animationType="fade">
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setOfferModalVisible(false)}
+        >
+          {/* Contenedor Principal (Sólido) */}
+          <TouchableOpacity 
+            activeOpacity={1} 
+            style={[styles.bottomSheet, { minHeight: 500, paddingBottom: 40 }]}
+          >
+            <View style={styles.bottomSheetHandle} />
+            <Text style={[styles.menuTitle, { marginBottom: 25 }]}>Gestión del Producto</Text>
+
+            {/* --- SECCIÓN A: PORTADA DINÁMICA --- */}
+            <View style={{ marginBottom: 30 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(184, 41, 219, 0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                  <Ionicons name="image-outline" size={20} color={COLORS.accent} />
+                </View>
+                <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: 'bold' }}>Portada del Video</Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 15, borderRadius: 15, borderWidth: 1, borderColor: '#222' }}>
+                <Image 
+                  source={{ uri: getThumbnail(selectedVideoToOffer?.videoUrl, tempThumbTime) }} 
+                  style={{ width: 90, height: 120, borderRadius: 10, backgroundColor: '#000' }} 
+                />
+                <View style={{ flex: 1, marginLeft: 20 }}>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 5 }}>Desliza para elegir el mejor cuadro:</Text>
+                  <Text style={{ color: COLORS.accent, fontSize: 22, fontWeight: '900', marginBottom: 5 }}>{tempThumbTime}s</Text>
+                  
+                  <Slider
+                    style={{ width: '100%', height: 40 }}
+                    minimumValue={0}
+                    maximumValue={30} // Ajustar según duración promedio
+                    step={1}
+                    value={tempThumbTime}
+                    onValueChange={setTempThumbTime}
+                    minimumTrackTintColor={COLORS.accent}
+                    maximumTrackTintColor="#333"
+                    thumbTintColor={COLORS.accent}
+                  />
+
+                  <TouchableOpacity 
+                    style={{ marginTop: 10, backgroundColor: COLORS.surface, paddingVertical: 8, borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: COLORS.accent }}
+                    onPress={handleSaveThumbnail}
+                    disabled={isSavingThumb}
+                  >
+                    {isSavingThumb ? <ActivityIndicator size="small" color={COLORS.accent} /> : <Text style={{ color: COLORS.accent, fontWeight: 'bold', fontSize: 12 }}>Actualizar Portada</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
 
-            <TouchableOpacity 
-              style={[styles.publishButton, { width: '100%', justifyContent: 'center' }]} 
-              onPress={handleApplyOffer}
-            >
-              <Text style={styles.publishButtonText}>Aplicar Descuento</Text>
-            </TouchableOpacity>
-          </View>
+            {/* --- SECCIÓN B: OFERTA Y PRECIO --- */}
+            <View style={{ marginBottom: 30 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(76, 217, 100, 0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                  <Ionicons name="pricetag-outline" size={20} color="#4CD964" />
+                </View>
+                <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: 'bold' }}>Aplicar Oferta</Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, borderRadius: 12, paddingHorizontal: 15, borderWidth: 1, borderColor: '#333' }}>
+                <Text style={{ color: COLORS.text, fontSize: 18, marginRight: 10 }}>$</Text>
+                <TextInput 
+                  style={{ flex: 1, color: COLORS.text, fontSize: 16, paddingVertical: 15 }} 
+                  placeholder="Nuevo precio con descuento" 
+                  placeholderTextColor="#555"
+                  keyboardType="numeric"
+                  value={newDiscountPrice}
+                  onChangeText={setNewDiscountPrice}
+                />
+                <TouchableOpacity 
+                  style={{ backgroundColor: COLORS.accent, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 8 }}
+                  onPress={handleApplyOffer}
+                >
+                  <Text style={{ color: '#000', fontWeight: 'bold' }}>Aplicar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* --- SECCIÓN C: ZONA DE PELIGRO --- */}
+            <View style={{ marginTop: 'auto', borderTopWidth: 1, borderTopColor: '#222', paddingTop: 25 }}>
+              <TouchableOpacity 
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 45, 85, 0.08)', paddingVertical: 15, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255, 45, 85, 0.3)' }} 
+                onPress={handleDeleteVideo}
+              >
+                <Ionicons name="trash-outline" size={20} color="#FF2D55" style={{ marginRight: 10 }} />
+                <Text style={{ color: '#FF2D55', fontWeight: 'bold', fontSize: 15 }}>Eliminar Video Permanentemente</Text>
+              </TouchableOpacity>
+            </View>
+
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
     </View>
@@ -724,6 +956,7 @@ const styles = StyleSheet.create({
   bottomSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 15, borderTopRightRadius: 15, padding: 20, paddingBottom: 40, minHeight: 300 },
   bottomSheetHandle: { width: 40, height: 4, backgroundColor: '#555', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   menuTitle: { color: COLORS.text, fontSize: 14, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+  input: { backgroundColor: '#000', color: '#FFF', borderRadius: 10, padding: 15, fontSize: 20, textAlign: 'center', letterSpacing: 10, marginBottom: 20, borderWidth: 1, borderColor: '#333' },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15 },
   menuItemText: { color: COLORS.text, fontSize: 16, marginLeft: 15, fontWeight: '500' },
   divider: { height: 1, backgroundColor: '#333', marginVertical: 10 },
@@ -734,5 +967,19 @@ const styles = StyleSheet.create({
   guestTitle: { fontSize: 24, fontWeight: 'bold', color: COLORS.text, marginBottom: 15 },
   guestSubtitle: { fontSize: 16, color: COLORS.textMuted, textAlign: 'center', marginBottom: 40, lineHeight: 24 },
   guestButton: { backgroundColor: COLORS.accent, paddingVertical: 16, paddingHorizontal: 40, borderRadius: 8, width: '100%', alignItems: 'center' },
-  guestButtonText: { color: '#000', fontSize: 16, fontWeight: 'bold' }
+  guestButtonText: { color: '#000', fontSize: 16, fontWeight: 'bold' },
+
+  // 👇 Estilos de ViralShop Midnight 👇
+  midnightOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' },
+  midnightCard: { width: '85%', backgroundColor: '#0A0514', borderRadius: 24, padding: 25, borderWidth: 1, borderColor: '#2A1A3D', shadowColor: '#b829db', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 15 },
+  midnightCloseBtn: { position: 'absolute', top: 15, right: 15, zIndex: 10 },
+  midnightContent: { alignItems: 'center', paddingTop: 10 },
+  neonIconContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(184, 41, 219, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 15, borderWidth: 1, borderColor: 'rgba(184, 41, 219, 0.3)' },
+  midnightTitle: { color: '#FFF', fontSize: 24, fontWeight: 'bold', marginBottom: 15, letterSpacing: 1 },
+  midnightDesc: { color: '#AAA', fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 25, paddingHorizontal: 10 },
+  ageTag: { backgroundColor: 'transparent', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#FF2D55', marginBottom: 30 },
+  ageTagText: { color: '#FF2D55', fontSize: 11, fontWeight: 'bold', letterSpacing: 2 },
+  neonButton: { width: '100%', backgroundColor: '#b829db', paddingVertical: 16, borderRadius: 12, alignItems: 'center', shadowColor: '#b829db', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 10 },
+  neonButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold', letterSpacing: 0.5 },
+  midnightInput: { width: '100%', backgroundColor: '#000', color: '#b829db', fontSize: 32, textAlign: 'center', letterSpacing: 15, paddingVertical: 15, borderRadius: 12, borderWidth: 1, borderColor: '#b829db', marginBottom: 10 },
 });

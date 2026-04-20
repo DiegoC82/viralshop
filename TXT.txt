@@ -5,6 +5,7 @@ pnpm run build --->
 
 npx prisma init  --> Ejecutá esto en la terminal Prisma (asegurate de seguir en apps/backend)
 npx prisma generate --> re lee la base que hay escrito.
+npx prisma db push ---> envio a Neon
 Ctrl + Shift + P ---> Restart TS
 
 npx expo start   ---> emulador

@@ -12,6 +12,9 @@ import { useFocusEffect, useNavigation, useIsFocused } from '@react-navigation/n
 import { useVideoPlayer, VideoView } from 'expo-video'; // 👈 ¡NUEVO!
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { Switch } from 'react-native'; // 👈 Asegúrate de importar Switch
+import { useCurrency } from '../context/CurrencyContext';
+import { formatCurrency } from '../utils/formatters';
 import { COLORS } from '../theme/colors';
 
 const { width, height } = Dimensions.get('window');
@@ -21,6 +24,8 @@ export default function RemateScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const { currency, exchangeRate } = useCurrency();
   
   const [auctions, setAuctions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,7 +159,7 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
           <Text style={styles.biddingSubtitle}>Puja más alta ({totalBids} ofertas):</Text>
           <View style={styles.priceRow}>
             <Animated.Text style={[styles.currentPrice, { transform: [{ scale: pulseAnim }] }]}>
-              ${item.productPrice.toLocaleString('es-AR')}
+              {formatCurrency(item.productPrice, currency, exchangeRate)}
             </Animated.Text>
             <View style={styles.topBidderBadge}>
               <Ionicons name="trophy" size={12} color="#FFD700" />
