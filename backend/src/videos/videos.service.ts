@@ -19,18 +19,30 @@ export class VideosService {
     this.expo = new Expo(); // 👈 2. Lo inicializamos
   }
 
-  async getFeed() {
-    return this.prisma.video.findMany({ 
-      where: { isAuction: false }, 
+  async getFeed(currentUserId?: string) {
+    const videos = await this.prisma.video.findMany({ 
+      where: { isAuction: false }, // 👈 ¡VOLVEMOS A PONER EL CANDADO!
       include: { 
         user: true,
-        // 👇 AGREGAR ESTO PARA CONTAR 👇
         _count: {
           select: { likes: true, comments: true }
         }
       }, 
       orderBy: { createdAt: 'desc' } 
     });
+
+    if (!currentUserId) return videos;
+
+    const following = await this.prisma.follows.findMany({
+      where: { followerId: currentUserId },
+      select: { followingId: true }
+    });
+    const followedIds = following.map(f => f.followingId);
+
+    return videos.map(video => ({
+      ...video,
+      isFollowing: followedIds.includes(video.userId)
+    }));
   }
 
   async toggleLike(videoId: string, userId: string) {
@@ -112,7 +124,9 @@ export class VideosService {
   }
 
   async searchVideos(query?: string, category?: string, subcategory?: string, lat?: string, lng?: string, radius?: string) {
-    const whereClause: any = {};
+    const whereClause: any = {
+      isAuction: false // 👈 CANDADO TAMBIÉN EN EL BUSCADOR
+    };
 
     if (query) {
       whereClause.OR = [
@@ -190,6 +204,17 @@ export class VideosService {
     });
 
     return bid;
+  }
+
+  // 👇 NUEVO: Aplicar un descuento a un video
+  async setDiscount(videoId: string, userId: string, discountPrice: number) {
+    const video = await this.prisma.video.findUnique({ where: { id: videoId } });
+    if (!video || video.userId !== userId) throw new Error('No autorizado');
+
+    return this.prisma.video.update({
+      where: { id: videoId },
+      data: { discountPrice } // Guarda el precio de oferta
+    });
   }
 
   // ==========================================

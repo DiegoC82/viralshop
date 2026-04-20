@@ -1,5 +1,5 @@
 // backend/src/videos/videos.controller.ts
-import { Controller, Get, Post, Param, UseGuards, Request, Body, UseInterceptors, UploadedFile, BadRequestException, Query } from '@nestjs/common';
+import { Controller, Get, Post, Param, Patch, UseGuards, Request, Body, UseInterceptors, UploadedFile, BadRequestException, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -11,8 +11,21 @@ export class VideosController {
   constructor(private readonly videosService: VideosService) {}
 
   @Get('feed')
-  getFeed() {
-    return this.videosService.getFeed();
+  getFeed(@Request() req: any) {
+    // Extraemos el token manualmente para permitir tanto a invitados como usuarios logueados
+    const authHeader = req.headers.authorization;
+    let userId = null;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        userId = payload.sub; // Guardamos el ID del usuario
+      } catch (e) {
+        // Si no hay sesión válida, sigue como invitado
+      }
+    }
+    return this.videosService.getFeed(userId);
   }
 
   @Get('search')
@@ -101,6 +114,14 @@ export class VideosController {
       category, subCategory, lat, lng
     );
   }
+
+  // 👇 NUEVO: Ruta para guardar la oferta
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/oferta')
+  async setDiscount(@Param('id') videoId: string, @Body('discountPrice') discountPrice: number, @Request() req: any) {
+    return this.videosService.setDiscount(videoId, req.user.sub, discountPrice);
+  }
+
   // ==========================================
   // 👇 NUEVAS RUTAS PARA REMATES (SUBASTAS) 👇
   // ==========================================
@@ -121,6 +142,7 @@ export class VideosController {
       }
     })
   }))
+
   async uploadRemate(
     @UploadedFile() file: Express.Multer.File, 
     @Body('title') title: string,

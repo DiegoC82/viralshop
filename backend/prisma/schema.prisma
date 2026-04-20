@@ -57,6 +57,7 @@ model Video {
   
   productName  String?
   productPrice Float?
+  discountPrice   Float?   // 👈 NUEVO: Precio rebajado (Oferta)
   productLink  String?
 
   // 👇 1. NUEVOS CAMPOS DE FILTROS Y MAPA 👇
