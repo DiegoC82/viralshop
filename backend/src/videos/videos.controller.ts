@@ -5,6 +5,7 @@ import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { VideosService } from './videos.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import * as fs from 'fs';
 
 @Controller('videos')
 export class VideosController {
@@ -135,14 +136,20 @@ export class VideosController {
   @Post('remate')
   @UseInterceptors(FileInterceptor('video', {
     storage: diskStorage({
-      destination: './uploads',
+      // 👇 1. MAGIA AQUÍ: Creamos la carpeta si Render la borró 👇
+      destination: (req, file, cb) => {
+        const uploadPath = './uploads';
+        if (!fs.existsSync(uploadPath)) {
+          fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
+      },
       filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
         cb(null, `remate-${uniqueSuffix}${extname(file.originalname)}`);
       }
     })
   }))
-
   async uploadRemate(
     @UploadedFile() file: Express.Multer.File, 
     @Body('title') title: string,
@@ -153,7 +160,7 @@ export class VideosController {
     const userId = req.user.sub;
     const priceNum = parseFloat(basePrice);
 
-    // 1. Subimos a Mux reciclando tu función existente!
+    // 1. Subimos a Mux
     const playbackId = await this.videosService.uploadToMux(file.path);
 
     // 2. Guardamos en la base de datos con formato de Subasta
