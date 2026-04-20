@@ -1,11 +1,12 @@
 // backend/src/videos/videos.controller.ts
-import { Controller, Get, Post, Param, Patch, UseGuards, Request, Body, UseInterceptors, UploadedFile, BadRequestException, Query } from '@nestjs/common';
+import { Controller, Get, Post, Param, Patch, UseGuards, Request, Body, UseInterceptors, UploadedFile, BadRequestException, Query, HttpException, HttpStatus } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { VideosService } from './videos.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import * as fs from 'fs';
+import * as os from 'os';
 
 @Controller('videos')
 export class VideosController {
@@ -136,14 +137,8 @@ export class VideosController {
   @Post('remate')
   @UseInterceptors(FileInterceptor('video', {
     storage: diskStorage({
-      // 👇 1. MAGIA AQUÍ: Creamos la carpeta si Render la borró 👇
-      destination: (req, file, cb) => {
-        const uploadPath = './uploads';
-        if (!fs.existsSync(uploadPath)) {
-          fs.mkdirSync(uploadPath, { recursive: true });
-        }
-        cb(null, uploadPath);
-      },
+      // 👇 1. Usamos la carpeta temporal nativa del servidor (A prueba de fallos en Render) 👇
+      destination: os.tmpdir(), 
       filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
         cb(null, `remate-${uniqueSuffix}${extname(file.originalname)}`);
@@ -156,15 +151,25 @@ export class VideosController {
     @Body('basePrice') basePrice: string,
     @Request() req: any
   ) {
-    if (!file) throw new BadRequestException('Falta el video del remate');
-    const userId = req.user.sub;
-    const priceNum = parseFloat(basePrice);
+    try {
+      if (!file) throw new BadRequestException('Falta el video del remate');
+      const userId = req.user.sub;
+      const priceNum = parseFloat(basePrice);
 
-    // 1. Subimos a Mux
-    const playbackId = await this.videosService.uploadToMux(file.path);
+      // 1. Subimos a Mux
+      const playbackId = await this.videosService.uploadToMux(file.path);
 
-    // 2. Guardamos en la base de datos con formato de Subasta
-    return this.videosService.createRemate(userId, playbackId, title, priceNum);
+      // 2. Guardamos en la base de datos
+      return await this.videosService.createRemate(userId, playbackId, title, priceNum);
+      
+    } catch (error: any) {
+      // 👇 2. Si explota, le mandamos el error EXACTO al celular 👇
+      console.error("🔥 Error crítico en uploadRemate:", error);
+      throw new HttpException(
+        error.message || 'Error desconocido en la base de datos o Mux',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
   }
 
   @UseGuards(JwtAuthGuard)
