@@ -50,6 +50,9 @@ export default function ProfileScreen({ navigation, route }: any) {
   const [editMenuVisible, setEditMenuVisible] = useState(false);
   const isPaymentCompleted = route?.params?.paymentCompleted;
 
+  const [editBio, setEditBio] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
   const [offerModalVisible, setOfferModalVisible] = useState(false);
   const [selectedVideoToOffer, setSelectedVideoToOffer] = useState<any>(null);
   const [newDiscountPrice, setNewDiscountPrice] = useState('');
@@ -171,6 +174,29 @@ const handleSaveThumbnail = async () => {
     setIsSavingThumb(false);
   }
 };
+  
+  // --- GUARDAR PERFIL (BIOGRAFÍA) ---
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      // Enviamos la nueva bio al servidor
+      await axios.patch(`${BACKEND_URL}/users/profile`, 
+        { bio: editBio },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Actualizamos la pantalla instantáneamente sin recargar
+      setProfile({ ...profile, bio: editBio });
+      setEditMenuVisible(false);
+      Alert.alert("¡Éxito!", "Tu descripción se ha actualizado.");
+    } catch (error) {
+      console.error("Error al guardar perfil:", error);
+      Alert.alert("Error", "No se pudo actualizar el perfil.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   // 3. CERRAR SESIÓN (CORREGIDO)
   const handleLogout = async () => {
@@ -371,8 +397,8 @@ const handleSaveThumbnail = async () => {
                 </TouchableOpacity>
 
                 <View style={{ flex: 1, marginLeft: 16 }}>
-                  {/* Nombre izquierda — @ derecha (Reciclando tu styles.nameRow original) */}
-                  <View style={[styles.nameRow, { marginBottom: 8 }]}>
+                  {/* 1. Nombre y @Usuario */}
+                  <View style={[styles.nameRow, { marginBottom: 4 }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Text style={[styles.name, { marginBottom: 0 }]}>{profile?.name}</Text>
                       {profile?.isVerified && (
@@ -382,9 +408,33 @@ const handleSaveThumbnail = async () => {
                     <Text style={[styles.username, { marginBottom: 0 }]}>@{profile?.username}</Text>
                   </View>
 
-                  {/* Botones de Editar y Compartir */}
-                  <View style={[styles.actionButtonsRow, { marginBottom: 10 }]}>
-                    <TouchableOpacity style={styles.editProfileButton} onPress={() => setEditMenuVisible(true)}>
+                  {/* 👇 2. NUEVA SECCIÓN: VALORACIÓN DEL VENDEDOR 👇 */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                    <View style={{ flexDirection: 'row', marginRight: 8 }}>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <Ionicons 
+                          key={i} 
+                          name={i <= 4 ? "star" : "star-outline"} // Simula 4 estrellas de 5
+                          size={14} 
+                          color={COLORS.accent} 
+                          style={{ marginRight: 2 }}
+                        />
+                      ))}
+                    </View>
+                    <Text style={{ color: COLORS.accent, fontWeight: 'bold', fontSize: 13 }}>
+                      98% <Text style={{ color: COLORS.textMuted, fontWeight: 'normal', fontSize: 11 }}>positivas</Text>
+                    </Text>
+                  </View>
+
+                  {/* 3. Botones de Acción (Editar/Compartir) */}
+                  <View style={[styles.actionButtonsRow, { marginBottom: 12 }]}>
+                    <TouchableOpacity 
+                      style={styles.editProfileButton} 
+                      onPress={() => {
+                        setEditBio(profile?.bio || ''); // 👈 Cargamos la bio actual
+                        setEditMenuVisible(true);
+                      }}
+                    >
                       <Text style={styles.editProfileText}>Editar perfil</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.shareButton}>
@@ -392,12 +442,20 @@ const handleSaveThumbnail = async () => {
                     </TouchableOpacity>
                   </View>
 
-                  {/* Descripción debajo de Editar Perfil, centrada al costado de la foto */}
-                  <View style={{ alignItems: 'center', paddingRight: 20 }}> 
+                  {/* 👇 4. BIOGRAFÍA REUBICADA (Ahora debajo de los botones) 👇 */}
+                  <View style={{ paddingRight: 10 }}> 
                     {profile?.bio ? (
-                      <Text style={[styles.bioText, { textAlign: 'center', paddingHorizontal: 0, fontSize: 13 }]}>{profile.bio}</Text>
+                      <Text style={[styles.bioText, { textAlign: 'left', paddingHorizontal: 0, fontSize: 13, marginBottom: 5 }]}>
+                        {profile.bio}
+                      </Text>
                     ) : (
-                      <TouchableOpacity style={styles.addBioButton} onPress={() => setEditMenuVisible(true)}>
+                      <TouchableOpacity 
+                        style={[styles.addBioButton, { alignItems: 'flex-start' }]} 
+                        onPress={() => {
+                          setEditBio(''); // 👈 Limpiamos si no hay bio
+                          setEditMenuVisible(true);
+                        }}
+                      >
                         <Text style={styles.addBioText}>+ Añadir descripción corta</Text>
                       </TouchableOpacity>
                     )}
@@ -691,6 +749,71 @@ const handleSaveThumbnail = async () => {
       </Modal>
 
       {/* ========================================== */}
+      {/* 👇 MODAL DE EDITAR PERFIL 👇 */}
+      {/* ========================================== */}
+      <Modal visible={editMenuVisible} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.bottomSheet, { minHeight: 350 }]}>
+            <View style={styles.bottomSheetHandle} />
+            
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: 'bold' }}>Editar Perfil</Text>
+              <TouchableOpacity onPress={() => setEditMenuVisible(false)}>
+                <Ionicons name="close" size={24} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ color: COLORS.textMuted, fontSize: 13, marginBottom: 8 }}>Descripción corta (Biografía)</Text>
+            <TextInput
+              style={{
+                backgroundColor: COLORS.background,
+                color: COLORS.text,
+                borderRadius: 12,
+                padding: 15,
+                fontSize: 15,
+                borderWidth: 1,
+                borderColor: '#333',
+                minHeight: 100,
+                textAlignVertical: 'top'
+              }}
+              placeholder="Ej: Tienda oficial de tecnología. Envíos a todo el país 🚀"
+              placeholderTextColor="#555"
+              multiline={true}
+              maxLength={150}
+              value={editBio}
+              onChangeText={setEditBio}
+            />
+            <Text style={{ color: '#555', fontSize: 11, textAlign: 'right', marginTop: 5 }}>
+              {editBio.length}/150
+            </Text>
+
+            <TouchableOpacity 
+              style={[styles.publishButton, { marginTop: 20, justifyContent: 'center' }]}
+              onPress={handleSaveProfile}
+              disabled={isSavingProfile}
+            >
+              {isSavingProfile ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text style={styles.publishButtonText}>Guardar Cambios</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Botón para quitar Verificación (Solo para testeo, como me pediste antes) */}
+            {profile?.isVerified && (
+              <TouchableOpacity 
+                style={{ marginTop: 20, alignItems: 'center' }}
+                onPress={handleRemoveVerification}
+              >
+                <Text style={{ color: '#FF2D55', fontWeight: 'bold' }}>Quitar verificación (Modo Prueba)</Text>
+              </TouchableOpacity>
+            )}
+
+          </View>
+        </View>
+      </Modal>
+
+      {/* ========================================== */}
       {/* 👇 MODAL VIRALSHOP MIDNIGHT (+18) 👇 */}
       {/* ========================================== */}
       <Modal visible={midnightVisible} transparent={true} animationType="slide">
@@ -894,12 +1017,21 @@ const styles = StyleSheet.create({
   statLabel: { color: COLORS.textMuted, fontSize: 12 },
   
   // Biografía
-  bioText: { color: COLORS.text, fontSize: 14, textAlign: 'center', paddingHorizontal: 40, marginBottom: 15 },
+  bioText: { 
+    color: COLORS.text, 
+    fontSize: 14, 
+    lineHeight: 18, // Le da aire al texto
+    marginBottom: 10 
+  },
   addBioButton: { marginBottom: 15, alignItems: 'center' },
   addBioText: { color: COLORS.accent, fontSize: 14, fontWeight: '600' },
   
   // Botones de acción (Editar + Compartir icono)
-  actionButtonsRow: { flexDirection: 'row', gap: 16, alignItems: 'center' },
+  actionButtonsRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    gap: 10 // Espaciado moderno
+  },
   editProfileButton: { backgroundColor: COLORS.surface, paddingVertical: 6, paddingHorizontal: 14, borderRadius: 6, borderWidth: 1, borderColor: '#333', alignItems: 'center' },
   shareButton: { backgroundColor: COLORS.surface, padding: 7, borderRadius: 6, borderWidth: 1, borderColor: '#333', alignItems: 'center', justifyContent: 'center' },
   editProfileText: { color: COLORS.text, fontSize: 12, fontWeight: '600' },
