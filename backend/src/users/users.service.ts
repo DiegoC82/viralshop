@@ -149,6 +149,14 @@ export class UsersService {
     });
   }
 
+  // 👇 NUEVA FUNCIÓN: Actualizar la biografía del perfil 👇
+  async updateProfile(userId: string, bio: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { bio }
+    });
+  }
+
   // 👇 NUEVA FUNCIÓN: Sube la imagen directamente a Cloudinary 👇
   async uploadImageToCloudinary(fileBuffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {

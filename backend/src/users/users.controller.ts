@@ -55,4 +55,11 @@ export class UsersController {
   async updatePushToken(@Req() req: any, @Body('pushToken') pushToken: string) {
     return this.usersService.updatePushToken(req.user.sub, pushToken);
   }
+
+  // 👇 RUTA: Guardar la nueva biografía del usuario 👇
+  @UseGuards(JwtAuthGuard)
+  @Patch('profile')
+  async updateProfile(@Request() req: any, @Body() body: { bio: string }) {
+    return this.usersService.updateProfile(req.user.sub, body.bio);
+  }
 }
