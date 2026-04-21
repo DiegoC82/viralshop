@@ -246,10 +246,18 @@ export class VideosService {
       throw new Error('No autorizado o video no encontrado');
     }
 
-    // Lo eliminamos de la base de datos
-    return this.prisma.video.delete({
-      where: { id: videoId }
-    });
+    // 👇 SOLUCIÓN: Usamos $transaction para borrar los "hijos" primero y el video al final
+    return this.prisma.$transaction([
+      this.prisma.like.deleteMany({ where: { videoId } }),
+      this.prisma.comment.deleteMany({ where: { videoId } }),
+      this.prisma.savedVideo.deleteMany({ where: { videoId } }),
+      this.prisma.bid.deleteMany({ where: { videoId } }), // Por si el video era un remate
+      
+      // Finalmente, borramos el video de la base de datos
+      this.prisma.video.delete({
+        where: { id: videoId }
+      })
+    ]);
   }
 
   async updateThumbnailTime(videoId: string, userId: string, time: number) {

@@ -313,7 +313,7 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted }
 
       <Modal visible={showComments} animationType="slide" transparent={true} onRequestClose={() => setShowComments(false)}>
         <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : "height"} 
+          behavior={Platform.OS === "ios" ? "padding" : undefined} 
           keyboardVerticalOffset={Platform.OS === "android" ? 20 : 0}
           style={styles.modalContainer}
         >
@@ -321,8 +321,8 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted }
           <View style={[
             styles.bottomSheet, 
             { 
-              height: Dimensions.get('window').height * 0.5, 
-              paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 35) : Math.max(insets.bottom, 15) 
+              height: Dimensions.get('window').height * 0.55, 
+              paddingBottom: Math.max(insets.bottom, 15)
             }
           ]}>
             <View style={styles.sheetHeader}>
@@ -502,6 +502,7 @@ export default function FeedScreen() {
         showsVerticalScrollIndicator={false}
         snapToAlignment="start"
         decelerationRate="fast"
+        snapToInterval={height}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         refreshControl={
@@ -550,7 +551,7 @@ const styles = StyleSheet.create({
   productName: { color: '#000', fontWeight: 'bold', fontSize: 13, marginLeft: 5, marginRight: 8, flexShrink: 1 },
   productPrice: { color: '#000', fontWeight: '900', fontSize: 13, marginRight: 5 },
   
-  topNavContainer: { position: 'absolute', top: 30, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, zIndex: 10 },
+  topNavContainer: { position: 'absolute', top: 50, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, zIndex: 10 },
   topNavTabs: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 15 },
   topNavTextActive: { color: '#FFFFFF', fontSize: 17, fontWeight: 'bold', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4 },
   topNavTextInactive: { color: 'rgba(255,255,255,0.6)', fontSize: 16, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
@@ -566,7 +567,7 @@ const styles = StyleSheet.create({
   commentUser: { color: COLORS.textMuted, fontSize: 12, fontWeight: 'bold', marginBottom: 3 },
   commentText: { color: COLORS.text, fontSize: 14 },
   emptyText: { color: COLORS.textMuted, textAlign: 'center', marginTop: 20 },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#333', paddingTop: 15, marginTop: 10 },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#333', paddingTop: 15, paddingBottom: 10, marginTop: 10 },
   commentInput: { flex: 1, backgroundColor: COLORS.background, color: COLORS.text, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, marginRight: 10 },
   sendButton: { padding: 10 },
   

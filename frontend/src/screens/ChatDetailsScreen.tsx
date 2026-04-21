@@ -131,7 +131,7 @@ export default function ChatDetailsScreen({ route, navigation }: any) {
         )}
 
         {/* CAMPO DE TEXTO PARA ENVIAR MENSAJE */}
-        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 10) }]}>
+        <View style={[styles.inputContainer, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 20) : 15 }]}>
           <TextInput 
             style={styles.input} 
             placeholder="Enviar mensaje..." 
@@ -191,7 +191,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: '#333',
     alignItems: 'flex-end',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
     backgroundColor: COLORS.background
   },
   input: {

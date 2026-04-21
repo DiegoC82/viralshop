@@ -216,11 +216,11 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
       {/* ========================================== */}
       <Modal visible={showComments} animationType="slide" transparent={true} onRequestClose={() => setShowComments(false)}>
         <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : "height"} 
+          behavior={Platform.OS === "ios" ? "padding" : undefined} 
           keyboardVerticalOffset={Platform.OS === "android" ? 20 : 0}
           style={styles.modalContainer}
         >
-          <View style={[styles.bottomSheet, { height: height * 0.55, paddingBottom: Platform.OS === 'android' ? Math.max(insetsTop, 35) : Math.max(insetsTop, 15) }]}>
+          <View style={[styles.bottomSheet, { height: height * 0.55, paddingBottom: Math.max(insetsTop, 15) }]}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Chat del Remate</Text>
               <TouchableOpacity onPress={() => setShowComments(false)}>
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   commentContent: { flex: 1, justifyContent: 'center' },
   commentUser: { color: '#AAA', fontSize: 12, fontWeight: 'bold', marginBottom: 3 },
   commentText: { color: '#FFF', fontSize: 14 },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#333', paddingTop: 15, marginTop: 10 },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#333', paddingTop: 15, paddingBottom: 10, marginTop: 10 },
   commentInput: { flex: 1, backgroundColor: '#000', color: '#FFF', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, marginRight: 10, borderWidth: 1, borderColor: '#333' },
   sendButton: { padding: 10 },
   emptyText: { color: '#AAA', textAlign: 'center', marginTop: 20, fontSize: 14 },
