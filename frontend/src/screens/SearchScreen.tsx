@@ -341,7 +341,7 @@ export default function SearchScreen({ navigation }: any) {
           data={results}
           keyExtractor={(item) => item.id}
           numColumns={3}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             // 1. Buscamos el ícono de la categoría
             const catIcon = CATEGORIES_DATA.find(c => c.name === item.category)?.icon || 'cube-outline';
             
@@ -349,7 +349,13 @@ export default function SearchScreen({ navigation }: any) {
             const avatarUri = item.user?.avatarUrl || `https://ui-avatars.com/api/?name=${item.user?.username || 'User'}&background=random&color=fff&size=150`;
 
             return (
-              <TouchableOpacity style={styles.videoThumbnailContainer} onPress={() => navigation.navigate('SingleVideo', { video: item })}>
+              <TouchableOpacity 
+                style={styles.videoThumbnailContainer} 
+                onPress={() => navigation.navigate('SingleVideo', { 
+                  videos: results,         // 👈 Aquí le pasamos la lista de resultados de la búsqueda
+                  initialIndex: index      // 👈 Aquí le decimos en qué video tocaste
+                })}
+              >
                 <Image source={{ uri: getThumbnail(item.videoUrl) }} style={styles.videoThumbnail} />
                 
                 {/* Ícono de Categoría (Arriba-Derecha) */}

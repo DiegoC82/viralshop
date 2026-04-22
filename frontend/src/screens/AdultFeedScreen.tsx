@@ -1,6 +1,6 @@
 // frontend/src/screens/AdultFeedScreen.tsx
 import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity, ActivityIndicator, Image, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useNavigation, useIsFocused } from '@react-navigation/native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,11 +10,10 @@ import axios from 'axios';
 import { useCurrency } from '../context/CurrencyContext';
 import { formatCurrency } from '../utils/formatters';
 
-const { height, width } = Dimensions.get('window');
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
 // 👇 COMPONENTE DEL VIDEO (Con estética oscura) 👇
-const AdultFeedItem = React.memo(({ item, isActive }: any) => {
+const AdultFeedItem = React.memo(({ item, isActive, width, height }: any) => {
   const { currency, exchangeRate } = useCurrency();
   const player = useVideoPlayer(item.videoUrl, player => {
     player.loop = true;
@@ -26,7 +25,7 @@ const AdultFeedItem = React.memo(({ item, isActive }: any) => {
   const avatarUri = item.user?.avatarUrl || `https://ui-avatars.com/api/?name=${item.user?.username || 'User'}&background=0A0514&color=b829db`;
 
   return (
-    <View style={styles.videoContainer}>
+    <View style={[styles.videoContainer, { width, height }]}>
       <VideoView player={player} style={StyleSheet.absoluteFillObject} contentFit="cover" nativeControls={false} />
       <View style={styles.darkOverlay} />
       
@@ -76,6 +75,8 @@ export default function AdultFeedScreen() {
   const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+  const { width } = useWindowDimensions();
+  const [feedHeight, setFeedHeight] = useState(Dimensions.get('window').height);
 
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
@@ -104,9 +105,9 @@ export default function AdultFeedScreen() {
   );
 
   return (
-    <View style={styles.mainContainer}>
+    <View style={styles.mainContainer} onLayout={(e) => setFeedHeight(e.nativeEvent.layout.height)}>
       {/* HEADER EXCLUSIVO MIDNIGHT */}
-      <View style={[styles.headerContainer, { top: Math.max(insets.top, 20) }]}>
+      <View style={[styles.headerContainer, { top: Math.max(insets.top, 45) }]}>
         <TouchableOpacity 
           style={styles.exitButton}
           onPress={() => navigation.goBack()} // 👈 Salida Segura
@@ -135,12 +136,18 @@ export default function AdultFeedScreen() {
           data={videos}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
-            <AdultFeedItem item={item} isActive={index === activeIndex && isFocused} />
+            <AdultFeedItem 
+            item={item} 
+            isActive={index === activeIndex && isFocused} 
+            width={width} 
+            height={feedHeight} 
+          />
           )}
           pagingEnabled
           showsVerticalScrollIndicator={false}
           snapToAlignment="start"
           decelerationRate="fast"
+          snapToInterval={feedHeight}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
         />
@@ -151,7 +158,7 @@ export default function AdultFeedScreen() {
 
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: '#0A0514' }, // 👈 Fondo casi negro
-  videoContainer: { height: height, width: width, backgroundColor: '#000' },
+  videoContainer: { backgroundColor: '#000' },
   darkOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10, 5, 20, 0.4)' }, // 👈 Filtro morado oscuro
   
   // Header

@@ -590,7 +590,7 @@ const handleSaveThumbnail = async () => {
           </View>
         }
 
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           // 👇 1. SI ESTAMOS EN LA PESTAÑA DE MÉTRICAS, DIBUJAMOS EL PANEL 👇
           if (activeTab === 'metrics') {
             const metrics = profile?.metrics || { totalViews: 0, totalSales: 0, activeAuctionsCount: 0 };
@@ -641,8 +641,14 @@ const handleSaveThumbnail = async () => {
           return (
             <TouchableOpacity 
               style={styles.videoThumbnailContainer} 
-              onPress={() => navigation.navigate('SingleVideo', { video: item })}
-              // 👇 AQUÍ ESTÁ EL EVENTO PARA MANTENER PRESIONADO 👇
+              onPress={() => {
+                // 👇 INYECTAMOS LA FOTO Y NOMBRE DEL PERFIL 👇
+                const videosConUsuario = getActiveData().map((v: any) => ({
+                  ...v,
+                  user: { username: profile?.username, avatarUrl: profile?.avatarUrl }
+                }));
+                navigation.navigate('SingleVideo', { videos: videosConUsuario, initialIndex: index });
+              }}
               onLongPress={() => { 
                 setSelectedVideoToOffer(item); 
                 setOfferModalVisible(true); 

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, Dimensions, FlatList, 
   Image, TouchableOpacity, Animated, ActivityIndicator, Alert, Share,
-  Modal, TextInput, KeyboardAvoidingView, Platform // 👈 AGREGAR ESTOS 4
+  Modal, TextInput, KeyboardAvoidingView, Platform, useWindowDimensions // 👈 Agrégalo aquí
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,18 +12,19 @@ import { useFocusEffect, useNavigation, useIsFocused } from '@react-navigation/n
 import { useVideoPlayer, VideoView } from 'expo-video'; // 👈 ¡NUEVO!
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { Switch } from 'react-native'; // 👈 Asegúrate de importar Switch
 import { useCurrency } from '../context/CurrencyContext';
 import { formatCurrency } from '../utils/formatters';
 import { COLORS } from '../theme/colors';
 
-const { width, height } = Dimensions.get('window');
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
 export default function RemateScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const { width } = useWindowDimensions();
+  const [feedHeight, setFeedHeight] = useState(Dimensions.get('window').height);
 
   const { currency, exchangeRate } = useCurrency();
   
@@ -60,7 +61,7 @@ const TimerBadge = React.memo(({ endDate, insetsTop }: { endDate: string, insets
   }, [endDate]);
 
   return (
-    <View style={[styles.timerBadge, { top: insetsTop + 20, zIndex: 100 }]}>
+    <View style={[styles.timerBadge, { top: Math.max(insetsTop, 45), zIndex: 100 }]}>
       <Ionicons name="time-outline" size={18} color="#FFF" />
       <Text style={styles.timerText}>{timeLeft}</Text>
     </View>
@@ -68,7 +69,7 @@ const TimerBadge = React.memo(({ endDate, insetsTop }: { endDate: string, insets
 });
 
 // 👇 1. ITEM DE REMATE: Con Chat de Subasta agregado 👇
-const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim, handleQuickBid, shareAuction, insetsTop, height }: any) => {
+const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim, handleQuickBid, shareAuction, insetsTop, width, height }: any) => {
   const navigation = useNavigation<any>(); // 👈 Necesario para ir a perfiles desde los comentarios
   const topBidder = item.bids && item.bids.length > 0 ? item.bids[0].user.username : 'Sé el primero';
   const totalBids = item.bids ? item.bids.length : 0;
@@ -138,7 +139,7 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
   };
 
   return (
-    <View style={[styles.auctionContainer, { height: height }]}>
+    <View style={[styles.auctionContainer, { width, height }]}>
       <VideoView player={player} style={StyleSheet.absoluteFillObject} contentFit="cover" nativeControls={false} />
       <LinearGradient colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.8)']} style={StyleSheet.absoluteFillObject} />
 
@@ -418,7 +419,7 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onLayout={(e) => setFeedHeight(e.nativeEvent.layout.height)}>
       <FlatList
         data={auctions}
         keyExtractor={(item) => item.id}
@@ -432,15 +433,16 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
             pulseAnim={pulseAnim}
             handleQuickBid={handleQuickBid}
             shareAuction={shareAuction}
-            height={height}
+            width={width}
+            height={feedHeight}
           />
         )}
         pagingEnabled 
         showsVerticalScrollIndicator={false}
         snapToAlignment="start"
         decelerationRate="fast"
-        snapToInterval={height} 
-        getItemLayout={(data, index) => ({ length: height, offset: height * index, index })}
+        snapToInterval={feedHeight}
+        getItemLayout={(data, index) => ({ length: feedHeight, offset: feedHeight * index, index })}
         ListEmptyComponent={renderEmptyState}
         // 👇 Optimizaciones de video 👇
         onViewableItemsChanged={onViewableItemsChanged}
@@ -455,7 +457,7 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  auctionContainer: { width: width, position: 'relative' },
+  auctionContainer: { width: '100%', position: 'relative' },
   
   timerBadge: { position: 'absolute', alignSelf: 'center', backgroundColor: 'rgba(255, 45, 85, 0.9)', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#FFF' },
   timerText: { color: '#FFF', fontWeight: 'bold', fontSize: 16, marginLeft: 8, letterSpacing: 1 },
@@ -490,7 +492,7 @@ const styles = StyleSheet.create({
   sideBtnText: { color: '#FFF', fontSize: 11, marginTop: 4, fontWeight: '600' },
 
   // 👇 Estilos para la pantalla vacía
-  emptyContainer: { height, width, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 },
   emptyIconCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(0, 229, 255, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(0, 229, 255, 0.3)' },
   emptyTitle: { fontSize: 26, fontWeight: 'bold', color: '#FFF', marginBottom: 10 },
   emptyDesc: { fontSize: 16, color: '#AAA', textAlign: 'center', marginBottom: 40 },

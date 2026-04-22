@@ -1,6 +1,6 @@
 // frontend/src/screens/FeedScreen.tsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { StyleSheet, Text, View, FlatList, Dimensions, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Alert, Share, Modal, TextInput, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { StyleSheet, Text, View, FlatList, Dimensions, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Alert, Share, Modal, TextInput, KeyboardAvoidingView, Platform, Animated, useWindowDimensions } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useFocusEffect, useNavigation, useIsFocused } from '@react-navigation/native'; 
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -16,7 +16,6 @@ import { formatCurrency } from '../utils/formatters';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 
-const { height, width } = Dimensions.get('window');
 const BASE_URL = 'https://viralshop-xr9v.onrender.com';
 
 Notifications.setNotificationHandler({
@@ -74,7 +73,7 @@ async function registerForPushNotificationsAsync() {
 }
 
 // 👇 Recibimos el estado de "Mute Global" como propiedades 👇
-const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted }: { item: any; isActive: boolean; isGlobalMuted: boolean; setIsGlobalMuted: any }) => {
+const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted, width, height }: { item: any; isActive: boolean; isGlobalMuted: boolean; setIsGlobalMuted: any; width: number; height: number }) => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets(); 
 
@@ -222,7 +221,7 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted }
   };
 
   return (
-    <View style={styles.videoWrapper}>
+    <View style={[styles.videoWrapper, { width, height }]}>
       
       <View style={styles.profileIndicator}>
         <Image source={{ uri: avatarUri }} style={styles.profileIndicatorImg} />
@@ -235,7 +234,7 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted }
         onHandlerStateChange={onHandlerStateChange}
         activeOffsetX={[-20, 20]} 
       >
-        <Animated.View style={[styles.videoContainer, { transform: [{ translateX }] }]}>
+        <Animated.View style={[styles.videoContainer, { width, height, transform: [{ translateX }] }]}>
           <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
           <View style={styles.darkOverlay} />
           
@@ -387,6 +386,9 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('Para ti'); 
 
+  const { width } = useWindowDimensions();
+  const [feedHeight, setFeedHeight] = useState(Dimensions.get('window').height);
+
   // 👇 1. NUEVA FUNCIÓN: Cambia la pestaña y reinicia el video al primero 👇
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -435,15 +437,6 @@ export default function FeedScreen() {
     if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index);
   }).current;
 
-  const renderItem = useCallback(({ item, index }: any) => (
-    <FeedItem 
-      item={item} 
-      isActive={index === activeIndex && isFocused} 
-      isGlobalMuted={isGlobalMuted} 
-      setIsGlobalMuted={setIsGlobalMuted} 
-    />
-  ), [activeIndex, isFocused, isGlobalMuted]);
-
   const keyExtractor = useCallback((item: any) => item.id, []);
 
   // 👇 2. NUEVO FILTRO: Oculta los remates en "Para ti" 👇
@@ -469,7 +462,7 @@ export default function FeedScreen() {
   }
 
   return (
-    <View style={styles.mainContainer}>
+    <View style={styles.mainContainer} onLayout={(e) => setFeedHeight(e.nativeEvent.layout.height)}>
       
       {/* 👇 AQUÍ ESTÁ LA MAGIA: Volvemos a poner el topNavContainer 👇 */}
       <View style={styles.topNavContainer}>
@@ -496,13 +489,22 @@ export default function FeedScreen() {
 
       <FlatList
         data={filteredVideos}
-        renderItem={renderItem}          // 👈 Usamos la función memorizada
+        renderItem={({ item, index }) => (
+          <FeedItem 
+            item={item} 
+            isActive={index === activeIndex && isFocused} 
+            isGlobalMuted={isGlobalMuted} 
+            setIsGlobalMuted={setIsGlobalMuted}
+            width={width}
+            height={feedHeight}
+          />
+        )}
         keyExtractor={keyExtractor}      // 👈 Usamos la llave memorizada
         pagingEnabled 
         showsVerticalScrollIndicator={false}
         snapToAlignment="start"
         decelerationRate="fast"
-        snapToInterval={height}
+        snapToInterval={feedHeight}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         refreshControl={
@@ -520,8 +522,8 @@ export default function FeedScreen() {
 
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: COLORS.background },
-  videoWrapper: { height: height, width: width, backgroundColor: '#000', overflow: 'hidden' }, 
-  videoContainer: { height: height, width: width, backgroundColor: COLORS.background },
+  videoWrapper: {  backgroundColor: '#000', overflow: 'hidden' }, 
+  videoContainer: { backgroundColor: COLORS.background },
   darkOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)' },
   
   // 👇 TEXTOS MÁS PEQUEÑOS Y MÁS ABAJO 👇
@@ -551,14 +553,14 @@ const styles = StyleSheet.create({
   productName: { color: '#000', fontWeight: 'bold', fontSize: 13, marginLeft: 5, marginRight: 8, flexShrink: 1 },
   productPrice: { color: '#000', fontWeight: '900', fontSize: 13, marginRight: 5 },
   
-  topNavContainer: { position: 'absolute', top: 50, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, zIndex: 10 },
+  topNavContainer: { position: 'absolute', top: Platform.OS === 'ios' ? 55 : 45, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, zIndex: 10 },
   topNavTabs: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 15 },
   topNavTextActive: { color: '#FFFFFF', fontSize: 17, fontWeight: 'bold', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4 },
   topNavTextInactive: { color: 'rgba(255,255,255,0.6)', fontSize: 16, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
   topNavSearch: { position: 'absolute', right: 20 },
   
   modalContainer: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  bottomSheet: { backgroundColor: COLORS.surface, height: height * 0.6, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
+  bottomSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#333', paddingBottom: 15, marginBottom: 15 },
   sheetTitle: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
   commentBox: { flexDirection: 'row', marginBottom: 15 },
@@ -574,7 +576,7 @@ const styles = StyleSheet.create({
   profileIndicator: {
     position: 'absolute',
     right: 20, 
-    top: height / 2 - 50, 
+    top: Dimensions.get('window').height / 2 - 50, // 👈 Se mide a sí mismo aquí
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: -1, 

@@ -13,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 import AuthScreen from './src/screens/AuthScreen';
 import InterestsScreen from './src/screens/InterestsScreen';
 import MainTabs from './src/navigation/MainTabs';
-import SingleVideoScreen from './src/screens/SingleVideoScreen';
 import SalesMetricsScreen from './src/screens/SalesMetricsScreen';
 import ChatDetailsScreen from './src/screens/ChatDetailsScreen'; // Asegúrate de ajustar la ruta
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,7 +22,6 @@ import ProUpgradeScreen from './src/screens/ProUpgradeScreen'; // Asegúrate de 
 import UploadScreen from './src/screens/UploadScreen';
 import VerifiedUpgradeScreen from './src/screens/VerifiedUpgradeScreen';
 import UploadRemateScreen from './src/screens/UploadRemateScreen';
-import PublicProfileScreen from './src/screens/PublicProfileScreen'; // Asegúrate de ajustar la ruta
 import AdultFeedScreen from './src/screens/AdultFeedScreen'; // Asegúrate de ajustar la ruta   
 import { CurrencyProvider } from './src/context/CurrencyContext';
 import { COLORS } from './src/theme/colors';
@@ -110,14 +108,12 @@ export default function App() {
              <Stack.Screen name="PreLoad" component={PreLoadScreen} /> 
              <Stack.Screen name="MainTabs" component={MainTabs} /> 
              <Stack.Screen name="MapSearch" component={MapSearchScreen} />
-             <Stack.Screen name="SingleVideo" component={SingleVideoScreen} />
              <Stack.Screen name="ChatDetails" component={ChatDetailsScreen} />
              <Stack.Screen name="SalesMetrics" component={SalesMetricsScreen} />
              <Stack.Screen name="ProUpgrade" component={ProUpgradeScreen} />
              <Stack.Screen name="VerifiedUpgrade" component={VerifiedUpgradeScreen} />
              <Stack.Screen name="Upload" component={UploadScreen} />
              <Stack.Screen name="UploadRemate" component={UploadRemateScreen} />
-             <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
              <Stack.Screen name="AdultFeed" component={AdultFeedScreen} />
            </Stack.Navigator>
           </NavigationContainer>

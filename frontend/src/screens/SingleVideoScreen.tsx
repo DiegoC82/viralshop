@@ -1,104 +1,335 @@
 // frontend/src/screens/SingleVideoScreen.tsx
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  StyleSheet, Text, View, FlatList, TouchableOpacity, Image, 
+  Dimensions, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, 
+  Platform, Share, Alert 
+} from 'react-native';
+import { useIsFocused } from '@react-navigation/native'; 
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
-import * as Location from 'expo-location'; // 👇 Importamos el traductor de GPS
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import * as Location from 'expo-location'; 
 import { COLORS } from '../theme/colors';
+import { useCurrency } from '../context/CurrencyContext';
+import { formatCurrency } from '../utils/formatters';
 
-const { width, height } = Dimensions.get('window');
+const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
-export default function SingleVideoScreen({ route, navigation }: any) {
-  const { video } = route.params;
-  
-  // 👇 ESTADO PARA GUARDAR EL NOMBRE DE LA CIUDAD 👇
+// =====================================================================
+// 1. EL COMPONENTE DE VIDEO (Con Likes y Comentarios 100% funcionales)
+// =====================================================================
+const ContextualVideoItem = React.memo(({ item, isActive, width, height, navigation, isGlobalMuted, setIsGlobalMuted }: any) => {
+  const { currency, exchangeRate } = useCurrency();
+  const insets = useSafeAreaInsets();
   const [cityName, setCityName] = useState<string | null>(null);
 
-  const player = useVideoPlayer(video.videoUrl, player => {
+  // Estados de Likes y Comentarios
+  const [isLiked, setIsLiked] = useState(item.isLiked || false);
+  const [likesCount, setLikesCount] = useState(item._count?.likes || item.likesCount || 0);
+  const [showComments, setShowComments] = useState(false);
+  const [commentsCount, setCommentsCount] = useState(item._count?.comments || item.commentsCount || 0);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
+
+  const player = useVideoPlayer(item.videoUrl, player => {
     player.loop = true;
-    player.play();
+    player.muted = isGlobalMuted;
   });
 
-  // 👇 EFECTO: Traducir coordenadas a Ciudad al abrir el video 👇
+  useEffect(() => { player.muted = isGlobalMuted; }, [isGlobalMuted, player]);
+  useEffect(() => { if (isActive) player.play(); else player.pause(); }, [isActive, player]);
+
+  // Traducir ubicación
   useEffect(() => {
     const fetchLocationName = async () => {
-      if (video.latitude && video.longitude) {
+      if (item.latitude && item.longitude) {
         try {
-          const geocode = await Location.reverseGeocodeAsync({
-            latitude: video.latitude,
-            longitude: video.longitude
-          });
-          
+          const geocode = await Location.reverseGeocodeAsync({ latitude: item.latitude, longitude: item.longitude });
           if (geocode.length > 0) {
-            // Buscamos la ciudad o la región
             const city = geocode[0].city || geocode[0].subregion || geocode[0].region;
             if (city) setCityName(city);
           }
-        } catch (error) {
-          console.log("Error decodificando ubicación:", error);
-        }
+        } catch (error) {}
       }
     };
-
     fetchLocationName();
-  }, [video.latitude, video.longitude]);
+  }, [item.latitude, item.longitude]);
+
+  // Funciones de interacción
+  const toggleLike = async () => {
+    const token = await AsyncStorage.getItem('userToken');
+    if (!token) return Alert.alert("Atención", "Inicia sesión para dar Like.");
+    
+    const previousState = isLiked;
+    setIsLiked(!isLiked);
+    setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
+    
+    try {
+      await axios.post(`${BACKEND_URL}/videos/${item.id}/like`, {}, { headers: { Authorization: `Bearer ${token}` } });
+    } catch (error) {
+      setIsLiked(previousState);
+      setLikesCount(previousState ? likesCount + 1 : likesCount - 1);
+    }
+  };
+
+  const openComments = async () => {
+    setShowComments(true);
+    setLoadingComments(true);
+    try {
+      const response = await axios.get(`${BACKEND_URL}/videos/${item.id}/comments`);
+      setComments((response.data || []).reverse());
+    } catch (error) {
+      console.log("Error comentarios", error);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const postComment = async () => {
+    if (newComment.trim() === '') return;
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) return Alert.alert("Atención", "Inicia sesión para comentar.");
+      
+      const response = await axios.post(`${BACKEND_URL}/videos/${item.id}/comments`,
+        { text: newComment },
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      setComments([response.data, ...comments]);
+      setCommentsCount(commentsCount + 1);
+      setNewComment('');
+    } catch (error) {
+      Alert.alert("Error", "No se pudo enviar el comentario.");
+    }
+  };
+
+  // Manejo de Datos del Usuario (A prueba de errores si venís del Perfil)
+  const username = item.user?.username || 'creador';
+  const avatarUri = item.user?.avatarUrl || `https://ui-avatars.com/api/?name=${username}&background=random&color=fff&size=150`;
+
+  return (
+    <View style={[styles.videoWrapper, { width, height }]}>
+      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+
+      {/* Info Inferior */}
+      <View style={styles.infoOverlay}>
+        {(cityName || (item.latitude && item.longitude)) && (
+          <View style={styles.locationTag}>
+            <Ionicons name="location" size={12} color="#FFF" />
+            <Text style={styles.locationText}>{cityName || 'Local'}</Text>
+          </View>
+        )}
+        <TouchableOpacity onPress={() => navigation.navigate('PublicProfile', { userId: item.userId })}>
+          <Text style={styles.username}>@{username}</Text>
+        </TouchableOpacity>
+        <Text style={styles.description}>{item.description}</Text>
+
+        {item.productName ? (
+          <TouchableOpacity style={styles.productTag}>
+            <Ionicons name="cart" size={16} color="#000" />
+            <Text style={styles.productName} numberOfLines={1}>{item.productName}</Text>
+            {item.discountPrice ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ color: '#555', textDecorationLine: 'line-through', fontSize: 11, marginRight: 5 }}>
+                  {formatCurrency(item.productPrice, currency, exchangeRate)}
+                </Text>
+                <Text style={[styles.productPrice, { color: '#b829db' }]}>
+                  {formatCurrency(item.discountPrice, currency, exchangeRate)}
+                </Text>
+              </View>
+            ) : item.productPrice ? (
+              <Text style={styles.productPrice}>{formatCurrency(item.productPrice, currency, exchangeRate)}</Text>
+            ) : null}
+            <Ionicons name="chevron-forward" size={14} color="#000" />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      {/* Menú Lateral */}
+      <View style={styles.actionOverlay}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => setIsGlobalMuted(!isGlobalMuted)}>
+          <Ionicons name={isGlobalMuted ? "volume-mute" : "volume-high"} size={28} color="rgba(255,255,255,0.6)" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={toggleLike}>
+          <Ionicons name={isLiked ? "heart" : "heart-outline"} size={32} color={isLiked ? "#FF2D55" : "rgba(255,255,255,0.8)"} />
+          <Text style={styles.actionText}>{likesCount}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={openComments}>
+          <Ionicons name="chatbubble-ellipses" size={28} color="rgba(255,255,255,0.8)" />
+          <Text style={styles.actionText}>{commentsCount}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={() => Share.share({ message: `¡Mira esto en ViralShop!` })}>
+          <Ionicons name="arrow-redo" size={28} color="rgba(255,255,255,0.6)" />
+        </TouchableOpacity>
+
+        <View style={styles.profileContainer}>
+          <TouchableOpacity onPress={() => navigation.navigate('PublicProfile', { userId: item.userId })}>
+            <Image source={{ uri: avatarUri }} style={styles.profilePic} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.followButton}>
+            <Ionicons name="add" size={14} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Modal de Comentarios (Idéntico al FeedScreen) */}
+      <Modal visible={showComments} animationType="slide" transparent={true} onRequestClose={() => setShowComments(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalContainer}>
+          <View style={[styles.bottomSheet, { height: height * 0.55, paddingBottom: Math.max(insets.bottom, 15) }]}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Comentarios</Text>
+              <TouchableOpacity onPress={() => setShowComments(false)}>
+                <Ionicons name="close-circle" size={28} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {loadingComments ? (
+              <ActivityIndicator size="large" color={COLORS.accent} style={{ marginTop: 20 }} />
+            ) : (
+              <FlatList
+                data={comments}
+                keyExtractor={(c, index) => index.toString()}
+                renderItem={({ item: comment }) => (
+                  <View style={styles.commentBox}>
+                    <TouchableOpacity onPress={() => { setShowComments(false); navigation.navigate('PublicProfile', { userId: comment.userId }); }}>
+                      <Image source={{ uri: comment.user?.avatarUrl || `https://ui-avatars.com/api/?name=${comment.user?.username || 'C'}&background=random&color=fff&size=150` }} style={styles.commentAvatar} />
+                    </TouchableOpacity>
+                    <View style={styles.commentContent}>
+                      <Text style={styles.commentUser}>@{comment.user?.username || 'creador'}</Text>
+                      <Text style={styles.commentText}>{comment.text}</Text>
+                    </View>
+                  </View>
+                )}
+                ListEmptyComponent={<Text style={styles.emptyText}>Sé el primero en comentar.</Text>}
+              />
+            )}
+
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Añadir un comentario..."
+                placeholderTextColor={COLORS.textMuted}
+                value={newComment}
+                onChangeText={setNewComment}
+              />
+              <TouchableOpacity style={styles.sendButton} onPress={postComment}>
+                <Ionicons name="send" size={20} color={newComment.trim() ? COLORS.accent : COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </View>
+  );
+}, (p, n) => p.item.id === n.item.id && p.isActive === n.isActive && p.isGlobalMuted === n.isGlobalMuted);
+
+// =====================================================================
+// 2. PANTALLA PRINCIPAL (Maneja la lista de videos sin desaparecer)
+// =====================================================================
+export default function SingleVideoScreen({ route, navigation }: any) {
+  // Manejo súper seguro de los arrays para evitar la pantalla en blanco
+  const videoList = route.params?.videos || (route.params?.video ? [route.params.video] : []);
+  const rawIndex = route.params?.initialIndex || 0;
+  // Validamos que el índice exista dentro de la lista para no causar un crash
+  const initialIndex = (rawIndex >= 0 && rawIndex < videoList.length) ? rawIndex : 0;
+
+  const insets = useSafeAreaInsets();
+  const { width, height: screenHeight } = Dimensions.get('window'); // Usamos Dimensions directo
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
+  const [isGlobalMuted, setIsGlobalMuted] = useState(false);
+  const isFocused = useIsFocused();
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index);
+  }).current;
+
+  if (videoList.length === 0) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.accent} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {/* Reproductor de Video */}
-      <VideoView 
-        player={player} 
-        style={StyleSheet.absoluteFill} 
-        contentFit="cover" 
-        nativeControls={false} 
-      />
-
-      {/* Botón flotante para volver atrás */}
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+      <TouchableOpacity style={[styles.backButton, { top: Math.max(insets.top, 20) }]} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={28} color="#FFF" />
       </TouchableOpacity>
 
-      {/* Capa de información */}
-      <View style={styles.infoOverlay}>
-        
-        {/* 👇 NUEVA ETIQUETA DE UBICACIÓN 👇 */}
-        {(cityName || (video.latitude && video.longitude)) && (
-          <View style={styles.locationTag}>
-            <Ionicons name="location" size={14} color="#FFF" />
-            <Text style={styles.locationText}>{cityName || 'Ubicación local'}</Text>
-          </View>
+      <FlatList
+        data={videoList}
+        keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()}
+        renderItem={({ item, index }) => (
+          <ContextualVideoItem
+            item={item}
+            isActive={index === activeIndex && isFocused}
+            width={width}
+            height={screenHeight}
+            navigation={navigation}
+            isGlobalMuted={isGlobalMuted}
+            setIsGlobalMuted={setIsGlobalMuted}
+          />
         )}
-
-        {/* Etiqueta del Producto */}
-        {video.productName && (
-          <TouchableOpacity style={styles.productTag}>
-            <Ionicons name="cart" size={16} color="#000" />
-            <Text style={styles.productName} numberOfLines={1}>{video.productName}</Text>
-            {video.productPrice && (
-              <Text style={styles.productPrice}>${video.productPrice}</Text>
-            )}
-            <Ionicons name="chevron-forward" size={14} color="#000" />
-          </TouchableOpacity>
-        )}
-        
-        <Text style={styles.description}>{video.description}</Text>
-      </View>
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        snapToInterval={screenHeight}
+        getItemLayout={(_, i) => ({ length: screenHeight, offset: screenHeight * i, index: i })}
+        initialScrollIndex={initialIndex}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+      />
     </View>
   );
 }
 
+// =====================================================================
+// 3. ESTILOS (Optimizados para convivir con el Tab Menu)
+// =====================================================================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  backButton: { position: 'absolute', top: 50, left: 20, zIndex: 10, backgroundColor: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 20 },
-  infoOverlay: { position: 'absolute', bottom: 30, left: 15, right: 15, zIndex: 10 },
+  videoWrapper: { backgroundColor: '#000' },
+  backButton: { position: 'absolute', left: 20, zIndex: 100, backgroundColor: 'rgba(0,0,0,0.4)', padding: 8, borderRadius: 20 },
   
-  // 👇 ESTILOS DEL PIN DE UBICACIÓN 👇
-  locationTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginBottom: 8 },
-  locationText: { color: '#FFF', fontSize: 12, fontWeight: '600', marginLeft: 4 },
+  // Info Inferior levantada para que el menú Main no lo tape
+  infoOverlay: { position: 'absolute', bottom: 100, left: 15, right: 75, zIndex: 10 },
+  locationTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, marginBottom: 8 },
+  locationText: { color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 },
+  username: { color: '#FFF', fontSize: 15, fontWeight: 'bold', marginBottom: 5 },
+  description: { color: '#EEE', fontSize: 13, marginBottom: 15 },
+  productTag: { flexDirection: 'row', backgroundColor: COLORS.accent, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center', alignSelf: 'flex-start' },
+  productName: { color: '#000', fontWeight: 'bold', fontSize: 13, marginLeft: 5, marginRight: 8, flexShrink: 1 },
+  productPrice: { color: '#000', fontWeight: '900', fontSize: 13, marginRight: 5 },
+  
+  // Botones levantados
+  actionOverlay: { position: 'absolute', bottom: 110, right: 10, alignItems: 'center', zIndex: 10 },
+  actionButton: { alignItems: 'center', marginBottom: 20 },
+  actionText: { color: '#FFF', fontSize: 12, fontWeight: 'bold', marginTop: 2 },
+  profileContainer: { alignItems: 'center', marginTop: 5 },
+  profilePic: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: COLORS.accent },
+  followButton: { position: 'absolute', bottom: -5, backgroundColor: COLORS.primary, width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
 
-  productTag: { flexDirection: 'row', backgroundColor: COLORS.accent, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center', marginBottom: 12, alignSelf: 'flex-start', maxWidth: '90%', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 3, elevation: 5 },
-  productName: { color: '#000', fontWeight: 'bold', fontSize: 14, marginLeft: 5, marginRight: 8, flexShrink: 1 },
-  productPrice: { color: '#000', fontWeight: '900', fontSize: 14, marginRight: 5 },
-  
-  description: { color: '#FFF', fontSize: 16, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
+  // Estilos del Modal de Comentarios
+  modalContainer: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  bottomSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#333', paddingBottom: 15, marginBottom: 15 },
+  sheetTitle: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
+  commentBox: { flexDirection: 'row', marginBottom: 15 },
+  commentAvatar: { width: 40, height: 40, borderRadius: 20, marginRight: 10 },
+  commentContent: { flex: 1, justifyContent: 'center' },
+  commentUser: { color: COLORS.textMuted, fontSize: 12, fontWeight: 'bold', marginBottom: 3 },
+  commentText: { color: COLORS.text, fontSize: 14 },
+  emptyText: { color: COLORS.textMuted, textAlign: 'center', marginTop: 20 },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#333', paddingTop: 15, paddingBottom: 10, marginTop: 10 },
+  commentInput: { flex: 1, backgroundColor: COLORS.background, color: COLORS.text, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, marginRight: 10 },
+  sendButton: { padding: 10 },
 });
