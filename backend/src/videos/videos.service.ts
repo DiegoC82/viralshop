@@ -152,7 +152,13 @@ export class VideosService {
 
     return this.prisma.video.findMany({
       where: whereClause,
-      include: { user: true },
+      include: { 
+        user: true,
+        // 👇 1. AGREGAR ESTO PARA EL BUSCADOR 👇
+        _count: {
+          select: { likes: true, comments: true }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
   }

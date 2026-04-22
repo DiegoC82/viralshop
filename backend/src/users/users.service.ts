@@ -27,7 +27,12 @@ export class UsersService {
         isVerified: true,    // Traemos si está verificado
         createdAt: true, 
         videos: { 
-          include: { user: true, bids: true }, // 👈 Incluimos 'bids' para calcular las ventas
+          include: { 
+            user: true, 
+            bids: true,
+            // 👇 2. AGREGAR ESTO PARA TU PROPIO PERFIL 👇
+            _count: { select: { likes: true, comments: true } }
+          }, 
           orderBy: { createdAt: 'desc' }
         },
         likes: { include: { video: { include: { user: true } } }, orderBy: { createdAt: 'desc' } },
@@ -86,6 +91,10 @@ export class UsersService {
         isVerified: true,
         videos: { 
           where: { isAuction: false }, // Ocultamos los remates del perfil normal
+          // 👇 3. AGREGAR ESTO PARA EL PERFIL DE OTROS 👇
+          include: { 
+            _count: { select: { likes: true, comments: true } } 
+          },
           orderBy: { createdAt: 'desc' } 
         },
         _count: {
