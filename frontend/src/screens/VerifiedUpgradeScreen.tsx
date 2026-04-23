@@ -42,17 +42,42 @@ const VERIFIED_FEATURES = [
   },
   { 
     id: 3, 
-    icon: 'color-palette-outline', 
-    title: 'Perfil destacado:', 
-    desc: 'Personaliza tu tienda con banners y colores exclusivos.' 
+    icon: 'play-outline', // Icono simulando el de video
+    title: 'Hasta 6 videos activos', 
+    desc: 'Mantén hasta 6 videos publicados simultáneamente para máxima visibilidad.' 
   },
   { 
     id: 4, 
+    icon: 'time-outline', // Cambié el icono por un relojito que queda mejor con el tiempo
+    title: 'Videos de hasta 30 segundos', 
+    desc: 'Supera el límite estándar y sube videos más largos con calidad optimizada.' 
+  },
+  { 
+    id: 5, 
     icon: 'headset-outline', 
     title: 'Soporte prioritario:', 
     desc: 'Atención directa y rápida por parte de nuestro equipo.' 
   },
 ];
+
+// 👇 COMPONENTE DE PRUEBA SOCIAL (Basado en tu imagen) 👇
+  const SocialProofBadge = () => (
+    <View style={styles.socialProofContainer}>
+      <View style={styles.avatarsWrapper}>
+        <Image source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} style={[styles.overlapAvatar, { zIndex: 3 }]} />
+        <Image source={{ uri: 'https://randomuser.me/api/portraits/women/68.jpg' }} style={[styles.overlapAvatar, { zIndex: 2, marginLeft: -12 }]} />
+        <Image source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }} style={[styles.overlapAvatar, { zIndex: 1, marginLeft: -12 }]} />
+      </View>
+      <View style={styles.socialTextContainer}>
+        <Text style={styles.socialTextBold}>+2.400 vendedores activos</Text>
+        <Text style={styles.socialTextLight}>que ya publican con ViralShop PRO</Text>
+      </View>
+      <View style={styles.liveBadge}>
+        <View style={styles.liveDot} />
+        <Text style={styles.liveText}>LIVE</Text>
+      </View>
+    </View>
+  );
 
 export default function VerifiedUpgradeScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -84,6 +109,8 @@ export default function VerifiedUpgradeScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 30 }} showsVerticalScrollIndicator={false}>
+
+        <SocialProofBadge />
         
         {/* TITULO Y HERO GRAPHIC */}
         <View style={styles.heroSection}>
@@ -91,7 +118,11 @@ export default function VerifiedUpgradeScreen({ navigation }: any) {
           
           {/* MOCKUP VISUAL */}
           <View style={styles.heroGraphic}>
-            <Image source={{ uri: 'https://via.placeholder.com/150x180/1A0E2A/1DA1F2?text=Tick+Azul' }} style={styles.mockGraphic} />
+            <Image 
+              source={require('../../assets/verified_profile_mockup.png')} 
+              style={styles.mockGraphic} 
+              resizeMode="contain" // Para que se adapte perfecto al cuadro
+            />
             <View style={styles.floatingCheck}>
               <Ionicons name="checkmark-circle" size={35} color="#1DA1F2" />
             </View>
@@ -149,36 +180,21 @@ export default function VerifiedUpgradeScreen({ navigation }: any) {
         {/* BOTÓN DE ACCIÓN CON DEGRADADO AZUL */}
         <View style={{ paddingHorizontal: 20, marginTop: 30 }}>
           <TouchableOpacity 
-            style={styles.actionButtonContainer}
-            onPress={() => {
-              // 1. Simulamos el pago exitoso
-              Alert.alert(
-                "Simulación de Pago", 
-                "Pago de $10.000 ARS aprobado con éxito.",
-                [
-                  { 
-                    text: "Continuar", 
-                    onPress: () => {
-                      // 2. Navegamos de vuelta al perfil pasando el parámetro 'paymentCompleted'
-                      navigation.navigate('MainTabs', { 
-                        screen: 'Perfil', // Ajusta esto si tu pestaña de perfil se llama distinto en MainTabs
-                        params: { paymentCompleted: true } 
-                      });
-                    }
-                  }
-                ]
-              );
-            }}
-          >
-            <LinearGradient
-              colors={['#00C6FF', '#0072FF']}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.gradientButton}
-            >
-              <Text style={styles.actionButtonText}>Obtener Verificación</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+  style={styles.actionButtonContainer}
+  onPress={() => {
+    navigation.navigate('Checkout', { 
+      planName: 'Perfil Verificado', 
+      price: 10000 
+    });
+  }}
+>
+  <LinearGradient
+    colors={['#00C6FF', '#0072FF']}
+    style={styles.gradientButton}
+  >
+    <Text style={styles.actionButtonText}>Obtener Verificación</Text>
+  </LinearGradient>
+</TouchableOpacity>
         </View>
 
         {/* ENLACES LEGALES DEL PIE */}
@@ -210,6 +226,17 @@ const styles = StyleSheet.create({
   mockGraphic: { width: '100%', height: '100%', borderRadius: 20, borderWidth: 1, borderColor: '#1DA1F2' },
   floatingCheck: { position: 'absolute', top: -15, right: -15, backgroundColor: '#FFF', borderRadius: 20, padding: 2 },
   floatingShield: { position: 'absolute', bottom: -10, left: -10, backgroundColor: '#1DA1F2', padding: 10, borderRadius: 20 },
+
+  // Estilos del Badge Social Proof
+  socialProofContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A24', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 25, marginBottom: 25, borderWidth: 1, borderColor: '#2A2A35' },
+  avatarsWrapper: { flexDirection: 'row', marginRight: 10 },
+  overlapAvatar: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#1A1A24' },
+  socialTextContainer: { flex: 1, marginRight: 10 },
+  socialTextBold: { color: '#FFF', fontSize: 13, fontWeight: 'bold' },
+  socialTextLight: { color: '#AAA', fontSize: 11 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(46, 213, 115, 0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#2ed573', marginRight: 4 },
+  liveText: { color: '#2ed573', fontSize: 10, fontWeight: 'bold' },
 
   featuresList: { paddingHorizontal: 20, marginTop: 10 },
   featureItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#333', marginBottom: 10 },

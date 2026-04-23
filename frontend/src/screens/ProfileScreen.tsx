@@ -16,6 +16,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CATEGORIES_DATA } from '../data/categories';
+import Constants from 'expo-constants';
 import axios from 'axios';
 import { Switch } from 'react-native'; // 👈 Asegúrate de importar Switch
 import { useCurrency } from '../context/CurrencyContext';
@@ -57,12 +58,21 @@ export default function ProfileScreen({ navigation, route }: any) {
   const [selectedVideoToOffer, setSelectedVideoToOffer] = useState<any>(null);
   const [newDiscountPrice, setNewDiscountPrice] = useState('');
 
-  const handleSimulateUploadDNI = () => {
-    Alert.alert("DNI Subido", "Tu documento está en revisión. ¡Perfil verificado temporalmente!");
+  const handleSimulateUploadDNI = async () => {
+  try {
+    const token = await AsyncStorage.getItem('userToken');
+    // 👇 ESTO LE AVISA AL BACKEND QUE AHORA SOS VERIFICADO
+    await axios.patch(`${BACKEND_URL}/users/profile`, { isVerified: true }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    Alert.alert("DNI Subido", "Perfil verificado con éxito.");
     setProfile({ ...profile, isVerified: true });
-    // Limpiamos el parámetro para que el botón desaparezca si se vuelve a renderizar
-    navigation.setParams({ paymentCompleted: false }); 
-  };
+    navigation.setParams({ paymentCompleted: false });
+  } catch (error) {
+    Alert.alert("Error", "No se pudo guardar la verificación en el servidor.");
+  }
+};
 
   const handleRemoveVerification = () => {
     setProfile({ ...profile, isVerified: false });
@@ -387,13 +397,25 @@ const handleSaveThumbnail = async () => {
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
                 {/* Foto con borde rosado circular */}
                 <TouchableOpacity onPress={handleChangeAvatar} disabled={isUploading}>
-                  {isUploading ? (
-                    <View style={[styles.avatar, { justifyContent: 'center', alignItems: 'center', borderColor: COLORS.accent, borderWidth: 2 }]}>
-                      <ActivityIndicator color={COLORS.accent} />
-                    </View>
-                  ) : (
-                    <Image source={{ uri: avatarUri }} style={[styles.avatar, { borderColor: COLORS.accent, borderWidth: 3 }]} />
-                  )}
+                  <View style={{ position: 'relative' }}>
+                    {isUploading ? (
+                      <View style={[styles.avatar, { justifyContent: 'center', alignItems: 'center', borderColor: COLORS.accent, borderWidth: 2 }]}>
+                        <ActivityIndicator color={COLORS.accent} />
+                      </View>
+                    ) : (
+                      <Image 
+                        source={{ uri: avatarUri }} 
+                        style={[styles.avatar, profile?.isVerified ? { borderColor: '#1DA1F2', borderWidth: 3 } : { borderColor: COLORS.accent, borderWidth: 3 }]} 
+                      />
+                    )}
+                    
+                    {/* 👇 ESCUDO AGREGADO AQUÍ 👇 */}
+                    {profile?.isVerified && (
+                      <View style={styles.verifiedBadgePhoto}>
+                        <Ionicons name="shield-checkmark" size={22} color="#FFF" />
+                      </View>
+                    )}
+                  </View>
                 </TouchableOpacity>
 
                 <View style={{ flex: 1, marginLeft: 16 }}>
@@ -402,7 +424,7 @@ const handleSaveThumbnail = async () => {
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                       <Text style={[styles.name, { marginBottom: 0 }]}>{profile?.name}</Text>
                       {profile?.isVerified && (
-                        <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" style={{ marginLeft: 4 }} />
+                        <Ionicons name="shield-checkmark" size={16} color="#1DA1F2" style={{ marginLeft: 4 }} />
                       )}
                     </View>
                     <Text style={[styles.username, { marginBottom: 0 }]}>@{profile?.username}</Text>
@@ -487,7 +509,7 @@ const handleSaveThumbnail = async () => {
                   }}
                 >
                   <View style={[styles.proIconWrap, { backgroundColor: '#1DA1F2' }]}>
-                    <Ionicons name={isPaymentCompleted ? "document-text" : "checkmark-circle"} size={22} color="#fff" />
+                    <Ionicons name={isPaymentCompleted ? "document-text" : "shield-checkmark"} size={22} color="#fff" />
                   </View>
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={styles.proTitle}>
@@ -750,6 +772,9 @@ const handleSaveThumbnail = async () => {
               <Ionicons name="log-out-outline" size={24} color="#FF2D55" />
               <Text style={[styles.menuItemText, { color: '#FF2D55' }]}>Cerrar Sesión</Text>
             </TouchableOpacity>
+            <Text style={styles.versionText}>
+              v{Constants.expoConfig?.version}
+            </Text>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -1005,6 +1030,16 @@ const styles = StyleSheet.create({
   appIcon: { width: 34, height: 34, borderRadius: 8, marginRight: 8 },
   appName: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
   headerUsername: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
+  verifiedBadgePhoto: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#1DA1F2',
+    borderRadius: 12,
+    padding: 1,
+    borderWidth: 2,
+    borderColor: COLORS.background
+  },
   
   // Perfil Info
   profileInfo: { paddingVertical: 15, paddingHorizontal: 16 },
@@ -1098,6 +1133,14 @@ const styles = StyleSheet.create({
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15 },
   menuItemText: { color: COLORS.text, fontSize: 16, marginLeft: 15, fontWeight: '500' },
   divider: { height: 1, backgroundColor: '#333', marginVertical: 10 },
+  versionText: {
+    color: 'rgba(255, 255, 255, 0.4)', // Blanco semitransparente sutil
+    fontSize: 11,
+    textAlign: 'center', // Para que quede bien centrado al final
+    marginTop: 30,       // Separación desde el botón de cerrar sesión
+    letterSpacing: 1.5,
+    fontWeight: '400',
+  },
 
   // Estilos de Invitado
   guestContainer: { flex: 1, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center', padding: 30 },

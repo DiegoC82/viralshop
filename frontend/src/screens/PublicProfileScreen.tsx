@@ -154,14 +154,26 @@ export default function PublicProfileScreen({ route, navigation }: any) {
                 
                 {/* 1. FILA: FOTO Y DATOS EN COLUMNAS */}
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15 }}>
-                  <Image source={{ uri: avatarUri }} style={[styles.avatar, { borderColor: COLORS.accent, borderWidth: 3 }]} />
+                  {/* 👇 FOTO CON ESCUDO 👇 */}
+                  <View style={{ position: 'relative' }}>
+                    <Image 
+                      source={{ uri: avatarUri }} 
+                      style={[styles.avatar, profile?.isVerified ? { borderColor: '#1DA1F2', borderWidth: 3 } : { borderColor: COLORS.accent, borderWidth: 3 }]} 
+                    />
+                    {profile?.isVerified && (
+                      <View style={styles.verifiedBadgePhoto}>
+                        <Ionicons name="shield-checkmark" size={22} color="#FFF" />
+                      </View>
+                    )}
+                  </View>
 
                   <View style={{ flex: 1, marginLeft: 16, justifyContent: 'center' }}>
                     <View style={[styles.nameRow, { marginBottom: 4 }]}>
+                      {/* 👇 NOMBRE CON ESCUDO (Actualizado al nuevo icono) 👇 */}
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Text style={styles.name}>{profile?.name}</Text>
                         {profile?.isVerified && (
-                          <Ionicons name="checkmark-circle" size={16} color="#1DA1F2" style={{ marginLeft: 4 }} />
+                          <Ionicons name="shield-checkmark" size={16} color="#1DA1F2" style={{ marginLeft: 4 }} />
                         )}
                       </View>
                       <Text style={styles.username}>@{profile?.username}</Text>
@@ -333,6 +345,16 @@ const styles = StyleSheet.create({
   name: { color: COLORS.text, fontSize: 16, fontWeight: '700' },
   username: { color: COLORS.textMuted, fontSize: 13, fontWeight: '500' },
   bioText: { color: COLORS.text, fontSize: 13, marginTop: 5, lineHeight: 18 },
+  verifiedBadgePhoto: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#1DA1F2',
+    borderRadius: 12,
+    padding: 1,
+    borderWidth: 2,
+    borderColor: COLORS.background
+  },
   
   // BOTONES (Ocupando todo el ancho)
   actionButtonsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%', marginBottom: 20 },

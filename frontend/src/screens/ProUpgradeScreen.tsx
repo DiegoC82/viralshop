@@ -38,14 +38,14 @@ const FEATURES = [
   { 
     id: 1, 
     icon: 'play-outline', // Icono simulando el de video
-    title: 'Hasta 10 videos activos', 
-    desc: 'Mantén hasta 10 videos publicados simultáneamente para máxima visibilidad.' 
+    title: 'Hasta 9-12 videos activos', 
+    desc: 'Mantén hasta 9-12 videos publicados simultáneamente para máxima visibilidad.' 
   },
   { 
     id: 2, 
-    icon: 'cloud-upload-outline', 
-    title: '5 nuevas subidas al mes', 
-    desc: 'Publica hasta 5 videos nuevos al mes con calidad optimizada.' 
+    icon: 'time-outline', // Cambié el icono por un relojito que queda mejor con el tiempo
+    title: 'Videos de hasta 1 minuto', 
+    desc: 'Supera el límite estándar y sube videos más largos con calidad optimizada.' 
   },
   { 
     id: 3, 
@@ -89,6 +89,25 @@ export default function ProUpgradeScreen({ navigation }: any) {
     </View>
   );
 
+  // 👇 COMPONENTE DE PRUEBA SOCIAL (Basado en tu imagen) 👇
+  const SocialProofBadge = () => (
+    <View style={styles.socialProofContainer}>
+      <View style={styles.avatarsWrapper}>
+        <Image source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }} style={[styles.overlapAvatar, { zIndex: 3 }]} />
+        <Image source={{ uri: 'https://randomuser.me/api/portraits/men/32.jpg' }} style={[styles.overlapAvatar, { zIndex: 2, marginLeft: -12 }]} />
+        <Image source={{ uri: 'https://randomuser.me/api/portraits/women/68.jpg' }} style={[styles.overlapAvatar, { zIndex: 1, marginLeft: -12 }]} />
+      </View>
+      <View style={styles.socialTextContainer}>
+        <Text style={styles.socialTextBold}>+2.400 vendedores activos</Text>
+        <Text style={styles.socialTextLight}>que ya publican con ViralShop PRO</Text>
+      </View>
+      <View style={styles.liveBadge}>
+        <View style={styles.liveDot} />
+        <Text style={styles.liveText}>LIVE</Text>
+      </View>
+    </View>
+  );
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* HEADER EXACTO */}
@@ -104,14 +123,20 @@ export default function ProUpgradeScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 30 }} showsVerticalScrollIndicator={false}>
+
+        <SocialProofBadge />
         
         {/* TITULO Y HERO GRAPHIC (SIMULADO) */}
         <View style={styles.heroSection}>
           <Text style={styles.mainTitle}>Lleva <Text style={{color: COLORS.accent}}>ViralShop</Text> al siguiente nivel.</Text>
-          
+
           {/* MOCKUP VISUAL DE LA IMAGEN 1 */}
           <View style={styles.heroGraphic}>
-            <Image source={{ uri: 'https://via.placeholder.com/150x180/1A0E2A/FF4A5A?text=ViralShop+Pro' }} style={styles.mockGraphic} />
+            <Image 
+              source={require('../../assets/ViralShop Planes.png')} 
+              style={styles.mockGraphic} 
+              resizeMode="contain" // Para que se adapte perfecto al cuadro
+            />
             <View style={styles.floatingStar}><Ionicons name="star" size={20} color="#000" /></View>
             <View style={styles.floatingCoin}><FontAwesome name="money" size={20} color="#000" /></View>
           </View>
@@ -207,6 +232,17 @@ const styles = StyleSheet.create({
   mockGraphic: { width: '100%', height: '100%', borderRadius: 20 },
   floatingStar: { position: 'absolute', top: -10, left: -10, backgroundColor: COLORS.accent, padding: 8, borderRadius: 20 },
   floatingCoin: { position: 'absolute', bottom: -10, right: -10, backgroundColor: COLORS.primary, padding: 8, borderRadius: 20 },
+
+  // Estilos del Badge Social Proof
+  socialProofContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A24', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 25, marginBottom: 25, borderWidth: 1, borderColor: '#2A2A35' },
+  avatarsWrapper: { flexDirection: 'row', marginRight: 10 },
+  overlapAvatar: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: '#1A1A24' },
+  socialTextContainer: { flex: 1, marginRight: 10 },
+  socialTextBold: { color: '#FFF', fontSize: 13, fontWeight: 'bold' },
+  socialTextLight: { color: '#AAA', fontSize: 11 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(46, 213, 115, 0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#2ed573', marginRight: 4 },
+  liveText: { color: '#2ed573', fontSize: 10, fontWeight: 'bold' },
 
   // Features
   featuresList: { paddingHorizontal: 20, marginTop: 10 },

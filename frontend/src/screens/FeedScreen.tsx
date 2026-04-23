@@ -239,8 +239,11 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted, 
           <View style={styles.darkOverlay} />
           
           <View style={styles.infoOverlay}>
-            <TouchableOpacity onPress={() => goToProfile(item.userId)}>
-              <Text style={styles.username}>@{item.user?.username || 'usuario'}</Text>
+            <TouchableOpacity onPress={() => goToProfile(item.userId)} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+              <Text style={[styles.username, { marginBottom: 0 }]}>@{item.user?.username || 'usuario'}</Text>
+              {item.user?.isVerified && (
+                <Ionicons name="shield-checkmark" size={16} color="#1DA1F2" style={{ marginLeft: 6, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }} />
+              )}
             </TouchableOpacity>
             <Text style={styles.description}>{item.description}</Text>
 
@@ -298,7 +301,18 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted, 
             {/* 5. Foto de Perfil (Abajo de todo) */}
             <View style={styles.profileContainer}>
               <TouchableOpacity onPress={() => goToProfile(item.userId)}>
-                <Image source={{ uri: avatarUri }} style={styles.profilePic} />
+                <View style={{ position: 'relative' }}>
+                  <Image 
+                    source={{ uri: avatarUri }} 
+                    style={[styles.profilePic, item.user?.isVerified && { borderColor: '#1DA1F2' }]} 
+                  />
+                  {/* 👇 MINI ESCUDO EN LA FOTO DEL FEED 👇 */}
+                  {item.user?.isVerified && (
+                    <View style={styles.feedVerifiedBadge}>
+                      <Ionicons name="shield-checkmark" size={10} color="#FFF" />
+                    </View>
+                  )}
+                </View>
               </TouchableOpacity>
               <TouchableOpacity style={styles.followButton} onPress={() => handleProtectedAction(() => toggleFollow())}>
                 <Ionicons name="add" size={14} color="#FFF" />
@@ -542,6 +556,18 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+  },
+
+  feedVerifiedBadge: {
+    position: 'absolute',
+    top: 30,
+    right: -1,
+    backgroundColor: '#1DA1F2',
+    borderRadius: 8,
+    padding: 2,
+    borderWidth: 1.5,
+    borderColor: '#000',
+    zIndex: 2,
   },
   
   // 👇 FOTO DE PERFIL AHORA ESTÁ ABAJO, ASÍ QUE LLEVA MARGIN TOP 👇

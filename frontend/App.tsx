@@ -1,6 +1,9 @@
 // frontend/App.tsx
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import 'react-native-gesture-handler';
+import * as NavigationBar from 'expo-navigation-bar';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native'; // Asegúrate de que Platform esté importado de 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, Text, StyleSheet, Image, Dimensions, StatusBar, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -22,6 +25,7 @@ import ProUpgradeScreen from './src/screens/ProUpgradeScreen'; // Asegúrate de 
 import UploadScreen from './src/screens/UploadScreen';
 import VerifiedUpgradeScreen from './src/screens/VerifiedUpgradeScreen';
 import UploadRemateScreen from './src/screens/UploadRemateScreen';
+import CheckoutScreen from './src/screens/CheckoutScreen';
 import AdultFeedScreen from './src/screens/AdultFeedScreen'; // Asegúrate de ajustar la ruta   
 import { CurrencyProvider } from './src/context/CurrencyContext';
 import { COLORS } from './src/theme/colors';
@@ -49,6 +53,12 @@ export default function App() {
 
     async function prepare() {
       try {
+        // 👇 1. FORZAMOS A ANDROID A OCULTAR LA BARRA INFERIOR 👇
+        if (Platform.OS === 'android') {
+          await NavigationBar.setVisibilityAsync("hidden");
+          await NavigationBar.setBehaviorAsync("overlay-swipe"); // Para que aparezca si el usuario desliza desde el borde
+        }
+
         await SplashScreen.hideAsync();
         
         // 👇 MAGIA DE AUTO-LOGIN: Revisamos si ya hay un usuario guardado
@@ -89,6 +99,9 @@ export default function App() {
         <View style={styles.centralContent}>
           <Image source={require('./assets/logo.png')} style={styles.logoImage} />
           <Text style={styles.splashPhrase}>Tu Próxima Compra Segura</Text>
+          <Text style={styles.versionText}>
+            v{Constants.expoConfig?.version}
+          </Text>
         </View>
       </View>
     );
@@ -112,6 +125,7 @@ export default function App() {
              <Stack.Screen name="SalesMetrics" component={SalesMetricsScreen} />
              <Stack.Screen name="ProUpgrade" component={ProUpgradeScreen} />
              <Stack.Screen name="VerifiedUpgrade" component={VerifiedUpgradeScreen} />
+             <Stack.Screen name="Checkout" component={CheckoutScreen} />
              <Stack.Screen name="Upload" component={UploadScreen} />
              <Stack.Screen name="UploadRemate" component={UploadRemateScreen} />
              <Stack.Screen name="AdultFeed" component={AdultFeedScreen} />
@@ -151,5 +165,12 @@ const styles = StyleSheet.create({
     opacity: 0.9, 
     // 👇 Añadimos un pequeño margen para equilibrar visualmente 👇
     marginTop: -35,
+  },
+  versionText: {
+    color: 'rgba(255, 255, 255, 0.4)', // Blanco semitransparente para que no resalte de más
+    fontSize: 11,                       // Tamaño pequeño y sutil
+    marginTop: 8,                       // Separación justa con la frase principal
+    letterSpacing: 1.5,                 // Letras apenas separadas (da un toque premium)
+    fontWeight: '400',
   },
 });
