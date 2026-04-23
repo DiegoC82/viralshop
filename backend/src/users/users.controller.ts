@@ -9,10 +9,9 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @UseGuards(JwtAuthGuard)
-  @Get('me')
-  getProfile(@Request() req: any) {
-    const userId = req.user.sub;
-    return this.usersService.getProfile(userId);
+  @Patch('profile')
+  async updateProfile(@Request() req: any, @Body() body: { bio?: string; isVerified?: boolean }) {
+    return this.usersService.updateProfile(req.user.sub, body.bio, body.isVerified);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -62,12 +61,4 @@ export class UsersController {
   async updatePushToken(@Req() req: any, @Body('pushToken') pushToken: string) {
     return this.usersService.updatePushToken(req.user.sub, pushToken);
   }
-
-  // 👇 RUTA: Guardar la nueva biografía del usuario 👇
-  @UseGuards(JwtAuthGuard)
-  @Patch('profile')
-  async updateProfile(@Request() req: any, @Body() body: { bio: string }) {
-    return this.usersService.updateProfile(req.user.sub, body.bio);
-  }
-
 }
