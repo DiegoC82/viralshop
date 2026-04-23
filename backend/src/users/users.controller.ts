@@ -8,10 +8,21 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  // 👇 RUTA FALTANTE RECUPERADA: La que trae TODOS tus datos 👇
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  getProfile(@Request() req: any) {
+    // Escudo antibalas para leer el token sí o sí
+    const userId = req.user.sub || req.user.id || req.user.userId;
+    return this.usersService.getProfile(userId);
+  }
+
+  // 👇 RUTA ACTUALIZADA: La que guarda tu verificación y biografía 👇
   @UseGuards(JwtAuthGuard)
   @Patch('profile')
   async updateProfile(@Request() req: any, @Body() body: { bio?: string; isVerified?: boolean }) {
-    return this.usersService.updateProfile(req.user.sub, body.bio, body.isVerified);
+    const userId = req.user.sub || req.user.id || req.user.userId;
+    return this.usersService.updateProfile(userId, body.bio, body.isVerified);
   }
 
   @UseGuards(JwtAuthGuard)

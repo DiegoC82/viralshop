@@ -123,12 +123,12 @@ export class UsersService {
   }
 
   // 👇 NUEVA FUNCIÓN: Actualizar la biografía del perfil 👇
-  async updateProfile(userId: string, bio: string, isVerified?: boolean) {
+  async updateProfile(userId: string, bio?: string, isVerified?: boolean) {
     return this.prisma.user.update({
       where: { id: userId },
       data: { 
-        bio,
-        isVerified: isVerified !== undefined ? isVerified : undefined // 👈 AGREGAR ESTO
+        bio: bio !== undefined ? bio : undefined,
+        isVerified: isVerified !== undefined ? isVerified : undefined
       }
     });
   }
