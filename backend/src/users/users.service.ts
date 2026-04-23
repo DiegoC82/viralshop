@@ -122,6 +122,26 @@ export class UsersService {
     };
   }
 
+  // 👇 NUEVA FUNCIÓN: Actualizar la biografía del perfil 👇
+  async updateProfile(userId: string, bio: string, isVerified?: boolean) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { 
+        bio,
+        isVerified: isVerified !== undefined ? isVerified : undefined // 👈 AGREGAR ESTO
+      }
+    });
+  }
+
+  // 👇 FUNCIÓN FALTANTE: Actualiza la última conexión (PUNTO VERDE) 👇
+  async updateLastActive(userId: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { lastActive: new Date() },
+      select: { id: true }
+    });
+  }
+
   // 👇 Activa o desactiva el "Seguir"
   async toggleFollow(targetUserId: string, currentUserId: string) {
     if (targetUserId === currentUserId) throw new Error('No puedes seguirte a ti mismo');
@@ -158,15 +178,7 @@ export class UsersService {
     });
   }
 
-  // 👇 NUEVA FUNCIÓN: Actualizar la biografía del perfil 👇
-  async updateProfile(userId: string, bio: string) {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { bio }
-    });
-  }
-
-  // 👇 NUEVA FUNCIÓN: Sube la imagen directamente a Cloudinary 👇
+    // 👇 NUEVA FUNCIÓN: Sube la imagen directamente a Cloudinary 👇
   async uploadImageToCloudinary(fileBuffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
     // 1. Convertimos el Buffer de memoria a un string en Base64

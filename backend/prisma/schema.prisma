@@ -24,6 +24,7 @@ model User {
   role        UserRole     @default(BUYER)
   isVerified  Boolean      @default(false) // Perfil verificado
   createdAt   DateTime     @default(now())
+  lastActive    DateTime  @default(now())
 
   // Relaciones Sociales
   interests   Interest[]   @relation("UserInterests")

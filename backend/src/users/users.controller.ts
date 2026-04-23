@@ -34,6 +34,13 @@ export class UsersController {
     return { message: 'Foto de perfil actualizada', avatarUrl };
   }
 
+  @Patch('ping')
+  @UseGuards(JwtAuthGuard)
+  async ping(@Request() req: any) {
+    // 👇 Corregido a req.user.sub para que coincida con tu sistema
+    return this.usersService.updateLastActive(req.user.sub); 
+  }
+  
   // 👇 RUTA: Obtener Perfil Público
   @Get(':id/public')
   async getPublicProfile(@Param('id') id: string, @Req() req: any) {
@@ -62,4 +69,5 @@ export class UsersController {
   async updateProfile(@Request() req: any, @Body() body: { bio: string }) {
     return this.usersService.updateProfile(req.user.sub, body.bio);
   }
+
 }
