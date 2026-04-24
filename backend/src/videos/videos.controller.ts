@@ -116,7 +116,7 @@ async setThumbnail(@Param('id') videoId: string, @Body('time') time: number, @Re
     const userId = req.user.sub;
     
     // Subimos a Mux
-    const playbackId = await this.videosService.uploadToMux(file.path);
+    const { playbackId, assetId } = await this.videosService.uploadToMux(file.path);
 
     // Convertimos los textos a números si existen
     const price = productPrice ? parseFloat(productPrice) : null;
@@ -126,8 +126,18 @@ async setThumbnail(@Param('id') videoId: string, @Body('time') time: number, @Re
 
     // Se lo pasamos al servicio para que lo guarde en la BD
     return this.videosService.createVideo(
-      userId, description, playbackId, productName, price, productLink, 
-      category, subCategory, lat, lng, isAdultContent
+      userId, 
+      description, 
+      playbackId, 
+      productName, 
+      price, // 👈 Pasamos el precio convertido a número
+      productLink,
+      category, 
+      subCategory, 
+      lat,   // 👈 Pasamos latitud convertida a número
+      lng,   // 👈 Pasamos longitud convertida a número
+      isAdultContent, // 👈 Pasamos el booleano
+      assetId // 👈 ID FÍSICO DE MUX
     );
   }
 
@@ -178,10 +188,10 @@ async setThumbnail(@Param('id') videoId: string, @Body('time') time: number, @Re
       const priceNum = parseFloat(basePrice);
 
       // 1. Subimos a Mux
-      const playbackId = await this.videosService.uploadToMux(file.path);
+      const { playbackId, assetId } = await this.videosService.uploadToMux(file.path);
 
       // 2. Guardamos en la base de datos
-      return await this.videosService.createRemate(userId, playbackId, title, priceNum);
+      return await this.videosService.createRemate(userId, playbackId, title, priceNum, assetId);
       
     } catch (error: any) {
       // 👇 2. Si explota, le mandamos el error EXACTO al celular 👇

@@ -51,7 +51,8 @@ model Video {
   id           String       @id @default(cuid())
   userId       String
   user         User         @relation(fields: [userId], references: [id])
-  videoUrl     String       
+  videoUrl     String 
+  muxAssetId   String?      //   👈 NUEVO: Guardaremos el ID físico de Mux aquí   
   description  String?
   viewCount    Int          @default(0)
   createdAt    DateTime     @default(now())

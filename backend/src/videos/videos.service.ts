@@ -82,7 +82,7 @@ export class VideosService {
     }
   }
 
-  async uploadToMux(filePath: string): Promise<string> {
+  async uploadToMux(filePath: string): Promise<{ playbackId: string, assetId: string }> {
     const upload = await this.mux.video.uploads.create({
       new_asset_settings: { playback_policy: ['public'] },
       cors_origin: '*',
@@ -105,21 +105,27 @@ export class VideosService {
     const asset = await this.mux.video.assets.retrieve(assetId);
     fs.unlinkSync(filePath);
 
-    return asset.playback_ids[0].id;
+    // 👇 NUEVO: Devolvemos ambos IDs
+    return { 
+      playbackId: asset.playback_ids[0].id, 
+      assetId: asset.id 
+    };
   }
 
   async createVideo(
     userId: string, description: string, playbackId: string, 
     productName?: string, productPrice?: number, productLink?: string,
     category?: string, subCategory?: string, latitude?: number, longitude?: number,
-    is18Plus?: boolean
+    is18Plus?: boolean,
+    muxAssetId?: string // 👈 NUEVO PARÁMETRO
   ) {
     const videoUrl = `https://stream.mux.com/${playbackId}.m3u8`;
     const newVideo = await this.prisma.video.create({
       data: { 
         userId, description, videoUrl, productName, productPrice, productLink,
         category, subCategory, latitude, longitude,
-        is18Plus: is18Plus || false
+        is18Plus: is18Plus || false,
+        muxAssetId // 👈 LO GUARDAMOS EN LA BASE DE DATOS
       },
     });
     return { message: '¡Video publicado con éxito!', video: newVideo };
@@ -181,7 +187,7 @@ export class VideosService {
   // 👇 FUNCIONES PARA REMATES (SUBASTAS) 👇
   // ==========================================
 
-  async createRemate(userId: string, playbackId: string, productName: string, basePrice: number) {
+  async createRemate(userId: string, playbackId: string, productName: string, basePrice: number, muxAssetId?: string) {
     const videoUrl = `https://stream.mux.com/${playbackId}.m3u8`;
     const auctionEndsAt = new Date();
     auctionEndsAt.setHours(auctionEndsAt.getHours() + 24);
@@ -190,6 +196,7 @@ export class VideosService {
       data: {
         userId, description: "Remate 24hs", videoUrl, productName, 
         productPrice: basePrice, isAuction: true, auctionEndsAt,
+        muxAssetId // 👈 LO GUARDAMOS EN LA BASE DE DATOS
       },
     });
     return { message: '¡Remate publicado con éxito!', remate: newRemate };
@@ -247,19 +254,27 @@ export class VideosService {
   async deleteVideo(videoId: string, userId: string) {
     const video = await this.prisma.video.findUnique({ where: { id: videoId } });
     
-    // Verificamos que el video exista y que le pertenezca a quien intenta borrarlo
     if (!video || video.userId !== userId) {
       throw new Error('No autorizado o video no encontrado');
     }
 
-    // 👇 SOLUCIÓN: Usamos $transaction para borrar los "hijos" primero y el video al final
+    // 👇 1. BORRAMOS EL VIDEO FÍSICO DE MUX PRIMERO 👇
+    if (video.muxAssetId) {
+      try {
+        await this.mux.video.assets.delete(video.muxAssetId);
+        console.log(`🗑️ Video eliminado de los servidores de Mux: ${video.muxAssetId}`);
+      } catch (error) {
+        console.error("❌ Error al borrar en Mux (Puede que ya no exista):", error);
+      }
+    }
+
+    // 2. Borramos los datos de Prisma
     return this.prisma.$transaction([
       this.prisma.like.deleteMany({ where: { videoId } }),
       this.prisma.comment.deleteMany({ where: { videoId } }),
       this.prisma.savedVideo.deleteMany({ where: { videoId } }),
-      this.prisma.bid.deleteMany({ where: { videoId } }), // Por si el video era un remate
+      this.prisma.bid.deleteMany({ where: { videoId } }), 
       
-      // Finalmente, borramos el video de la base de datos
       this.prisma.video.delete({
         where: { id: videoId }
       })
