@@ -5,6 +5,7 @@ import * as NavigationBar from 'expo-navigation-bar';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native'; // Asegúrate de que Platform esté importado de 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import * as Notifications from 'expo-notifications';
 import { View, Text, StyleSheet, Image, Dimensions, StatusBar, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -30,6 +31,16 @@ import AdultFeedScreen from './src/screens/AdultFeedScreen'; // Asegúrate de aj
 import { CurrencyProvider } from './src/context/CurrencyContext';
 import { COLORS } from './src/theme/colors';
 
+// 👇 2. AGREGAR ESTA ANTENA GLOBAL AQUÍ AFUERA 👇
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true, // 👈 Agregado para que muestre el cartelito flotante
+    shouldShowList: true,   // 👈 Agregado para que quede en el historial
+  }),
+});
 
 const { width, height } = Dimensions.get('window');
 const Stack = createNativeStackNavigator();
@@ -56,7 +67,6 @@ export default function App() {
         // 👇 1. FORZAMOS A ANDROID A OCULTAR LA BARRA INFERIOR 👇
         if (Platform.OS === 'android') {
           await NavigationBar.setVisibilityAsync("hidden");
-          await NavigationBar.setBehaviorAsync("overlay-swipe"); // Para que aparezca si el usuario desliza desde el borde
         }
 
         await SplashScreen.hideAsync();

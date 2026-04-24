@@ -4,48 +4,231 @@ export const LOCATIONS_DATA = [
   {
     country: '🇦🇷 Argentina',
     provinces: [
-      {
-        name: 'Mendoza',
-        departments: ['Mendoza (Capital)', 'Godoy Cruz', 'Luján de Cuyo', 'San Rafael', 'Tunuyán', 'Malargüe', 'General Alvear']
-      },
-      {
-        name: 'Buenos Aires',
-        departments: ['La Plata', 'Mar del Plata', 'Bahía Blanca', 'Tandil', 'Olavarría', 'Vicente López']
-      },
-      {
-        name: 'CABA',
-        departments: ['Palermo', 'Belgrano', 'Caballito', 'Recoleta', 'Villa Urquiza']
-      },
-      {
-        name: 'Córdoba',
-        departments: ['Córdoba Capital', 'Villa Carlos Paz', 'Río Cuarto', 'Alta Gracia']
-      }
+      { name: 'Buenos Aires', departments: ['La Plata', 'Mar del Plata', 'Bahía Blanca', 'Tandil', 'Olavarría', 'Vicente López', 'San Isidro', 'Tigre', 'Avellaneda', 'Quilmes', 'Lanús', 'Morón', 'San Martín'] },
+      { name: 'CABA', departments: ['Palermo', 'Belgrano', 'Caballito', 'Recoleta', 'Villa Urquiza', 'Puerto Madero', 'San Telmo', 'Núñez', 'Almagro', 'Flores', 'Villa Devoto'] },
+      { name: 'Catamarca', departments: ['San Fernando del Valle de Catamarca', 'Valle Viejo', 'Andalgalá', 'Tinogasta', 'Belén'] },
+      { name: 'Chaco', departments: ['Resistencia', 'Sáenz Peña', 'Villa Ángela', 'Charata', 'Castelli'] },
+      { name: 'Chubut', departments: ['Comodoro Rivadavia', 'Trelew', 'Puerto Madryn', 'Esquel', 'Rawson'] },
+      { name: 'Córdoba', departments: ['Córdoba Capital', 'Villa Carlos Paz', 'Río Cuarto', 'Alta Gracia', 'Villa María', 'San Francisco', 'Cosquín', 'Jesús María'] },
+      { name: 'Corrientes', departments: ['Corrientes (Capital)', 'Goya', 'Paso de los Libres', 'Curuzú Cuatiá', 'Mercedes'] },
+      { name: 'Entre Ríos', departments: ['Paraná', 'Concordia', 'Gualeguaychú', 'Concepción del Uruguay', 'Gualeguay'] },
+      { name: 'Formosa', departments: ['Formosa (Capital)', 'Clorinda', 'Pirané', 'El Colorado'] },
+      { name: 'Jujuy', departments: ['San Salvador de Jujuy', 'San Pedro', 'Palpalá', 'Perico', 'La Quiaca', 'Humahuaca'] },
+      { name: 'La Pampa', departments: ['Santa Rosa', 'General Pico', 'Toay', 'Eduardo Castex'] },
+      { name: 'La Rioja', departments: ['La Rioja (Capital)', 'Chilecito', 'Chamical', 'Aimogasta'] },
+      { name: 'Mendoza', departments: ['Mendoza (Capital)', 'Godoy Cruz', 'Luján de Cuyo', 'San Rafael', 'Tunuyán', 'Malargüe', 'General Alvear', 'Maipú', 'Guaymallén', 'Las Heras'] },
+      { name: 'Misiones', departments: ['Posadas', 'Oberá', 'Eldorado', 'Puerto Iguazú', 'San Vicente'] },
+      { name: 'Neuquén', departments: ['Neuquén (Capital)', 'San Martín de los Andes', 'Villa La Angostura', 'Zapala', 'Cutral Có', 'Plottier'] },
+      { name: 'Río Negro', departments: ['San Carlos de Bariloche', 'General Roca', 'Cipolletti', 'Viedma', 'Villa Regina', 'El Bolsón'] },
+      { name: 'Salta', departments: ['Salta (Capital)', 'Cafayate', 'Orán', 'Tartagal', 'Rosario de Lerma', 'General Güemes'] },
+      { name: 'San Juan', departments: ['San Juan (Capital)', 'Rawson', 'Rivadavia', 'Chimbas', 'Pocito'] },
+      { name: 'San Luis', departments: ['San Luis (Capital)', 'Villa Mercedes', 'Merlo', 'Juana Koslay'] },
+      { name: 'Santa Cruz', departments: ['Río Gallegos', 'Caleta Olivia', 'El Calafate', 'Pico Truncado', 'Puerto Deseado'] },
+      { name: 'Santa Fe', departments: ['Rosario', 'Santa Fe (Capital)', 'Rafaela', 'Venado Tuerto', 'Reconquista', 'San Lorenzo', 'Santo Tomé'] },
+      { name: 'Santiago del Estero', departments: ['Santiago del Estero (Capital)', 'La Banda', 'Termas de Río Hondo', 'Frías'] },
+      { name: 'Tierra del Fuego', departments: ['Ushuaia', 'Río Grande', 'Tolhuin'] },
+      { name: 'Tucumán', departments: ['San Miguel de Tucumán', 'Yerba Buena', 'Tafí Viejo', 'Concepción', 'Tafí del Valle'] }
     ]
   },
   {
     country: '🇨🇱 Chile',
     provinces: [
-      {
-        name: 'Región Metropolitana',
-        departments: ['Santiago Centro', 'Providencia', 'Las Condes', 'Maipú']
-      },
-      {
-        name: 'Valparaíso',
-        departments: ['Valparaíso', 'Viña del Mar', 'Quilpué']
-      }
+      { name: 'Arica y Parinacota', departments: ['Arica', 'Putre', 'Camarones'] },
+      { name: 'Tarapacá', departments: ['Iquique', 'Alto Hospicio', 'Pozo Almonte'] },
+      { name: 'Antofagasta', departments: ['Antofagasta', 'Calama', 'Tocopilla', 'San Pedro de Atacama'] },
+      { name: 'Atacama', departments: ['Copiapó', 'Vallenar', 'Caldera', 'Chañaral'] },
+      { name: 'Coquimbo', departments: ['La Serena', 'Coquimbo', 'Ovalle', 'Illapel', 'Vicuña'] },
+      { name: 'Valparaíso', departments: ['Valparaíso', 'Viña del Mar', 'Quilpué', 'Villa Alemana', 'San Antonio', 'Los Andes', 'San Felipe'] },
+      { name: 'Región Metropolitana', departments: ['Santiago Centro', 'Providencia', 'Las Condes', 'Maipú', 'Ñuñoa', 'Vitacura', 'La Florida', 'Puente Alto', 'San Bernardo'] },
+      { name: 'O\'Higgins', departments: ['Rancagua', 'Machalí', 'San Fernando', 'Rengo', 'Pichilemu'] },
+      { name: 'Maule', departments: ['Talca', 'Curicó', 'Linares', 'Constitución', 'Cauquenes'] },
+      { name: 'Ñuble', departments: ['Chillán', 'San Carlos', 'Bulnes', 'Quillón'] },
+      { name: 'Biobío', departments: ['Concepción', 'Talcahuano', 'Los Ángeles', 'San Pedro de la Paz', 'Coronel', 'Chiguayante'] },
+      { name: 'La Araucanía', departments: ['Temuco', 'Padre Las Casas', 'Villarrica', 'Pucón', 'Angol'] },
+      { name: 'Los Ríos', departments: ['Valdivia', 'La Unión', 'Río Bueno', 'Panguipulli'] },
+      { name: 'Los Lagos', departments: ['Puerto Montt', 'Osorno', 'Castro', 'Puerto Varas', 'Ancud'] },
+      { name: 'Aysén', departments: ['Coyhaique', 'Puerto Aysén', 'Chile Chico'] },
+      { name: 'Magallanes', departments: ['Punta Arenas', 'Puerto Natales', 'Porvenir'] }
     ]
   },
   {
     country: '🇺🇾 Uruguay',
     provinces: [
-      {
-        name: 'Montevideo',
-        departments: ['Montevideo', 'Pocitos', 'Punta Carretas']
-      },
-      {
-        name: 'Maldonado',
-        departments: ['Punta del Este', 'Piriápolis', 'Maldonado']
-      }
+      { name: 'Artigas', departments: ['Artigas', 'Bella Unión'] },
+      { name: 'Canelones', departments: ['Ciudad de la Costa', 'Las Piedras', 'Pando', 'Canelones', 'Atlántida'] },
+      { name: 'Cerro Largo', departments: ['Melo', 'Río Branco'] },
+      { name: 'Colonia', departments: ['Colonia del Sacramento', 'Carmelo', 'Rosario', 'Nueva Palmira', 'Tarariras'] },
+      { name: 'Durazno', departments: ['Durazno', 'Sarandí del Yí'] },
+      { name: 'Flores', departments: ['Trinidad'] },
+      { name: 'Florida', departments: ['Florida', 'Sarandí Grande'] },
+      { name: 'Lavalleja', departments: ['Minas', 'José Pedro Varela'] },
+      { name: 'Maldonado', departments: ['Maldonado', 'Punta del Este', 'San Carlos', 'Piriápolis', 'Pan de Azúcar'] },
+      { name: 'Montevideo', departments: ['Montevideo', 'Pocitos', 'Punta Carretas', 'Carrasco', 'Ciudad Vieja', 'Malvín', 'Centro'] },
+      { name: 'Paysandú', departments: ['Paysandú', 'Guichón'] },
+      { name: 'Río Negro', departments: ['Fray Bentos', 'Young'] },
+      { name: 'Rivera', departments: ['Rivera', 'Tranqueras'] },
+      { name: 'Rocha', departments: ['Rocha', 'Chuy', 'La Paloma', 'Castillos'] },
+      { name: 'Salto', departments: ['Salto', 'Constitución'] },
+      { name: 'San José', departments: ['San José de Mayo', 'Ciudad del Plata', 'Libertad'] },
+      { name: 'Soriano', departments: ['Mercedes', 'Dolores'] },
+      { name: 'Tacuarembó', departments: ['Tacuarembó', 'Paso de los Toros'] },
+      { name: 'Treinta y Tres', departments: ['Treinta y Tres', 'Vergara'] }
+    ]
+  },
+  {
+    country: '🇵🇾 Paraguay',
+    provinces: [
+      { name: 'Asunción (Distrito Capital)', departments: ['Asunción'] },
+      { name: 'Alto Paraguay', departments: ['Fuerte Olimpo', 'Carmelo Peralta', 'Puerto Casado'] },
+      { name: 'Alto Paraná', departments: ['Ciudad del Este', 'Presidente Franco', 'Hernandarias', 'Minga Guazú'] },
+      { name: 'Amambay', departments: ['Pedro Juan Caballero', 'Capitán Bado', 'Bella Vista Norte'] },
+      { name: 'Boquerón', departments: ['Filadelfia', 'Loma Plata', 'Mariscal Estigarribia'] },
+      { name: 'Caaguazú', departments: ['Coronel Oviedo', 'Caaguazú', 'Repatriación', 'San José de los Arroyos'] },
+      { name: 'Caazapá', departments: ['Caazapá', 'San Juan Nepomuceno', 'Yuty'] },
+      { name: 'Canindeyú', departments: ['Salto del Guairá', 'Curuguaty', 'Katueté'] },
+      { name: 'Central', departments: ['Luque', 'San Lorenzo', 'Capiatá', 'Lambaré', 'Fernando de la Mora', 'Limpio'] },
+      { name: 'Concepción', departments: ['Concepción', 'Horqueta', 'Yby Yaú'] },
+      { name: 'Cordillera', departments: ['Caacupé', 'Piribebuy', 'Eusebio Ayala', 'San Bernardino'] },
+      { name: 'Guairá', departments: ['Villarrica', 'Independencia', 'Paso Yobái'] },
+      { name: 'Itapúa', departments: ['Encarnación', 'Cambyretá', 'Hohenau', 'Coronel Bogado'] },
+      { name: 'Misiones', departments: ['San Juan Bautista', 'San Ignacio', 'Ayolas'] },
+      { name: 'Ñeembucú', departments: ['Pilar', 'Alberdi', 'Cerrito'] },
+      { name: 'Paraguarí', departments: ['Paraguarí', 'Carapeguá', 'Yaguarón', 'Quiindy'] },
+      { name: 'Presidente Hayes', departments: ['Villa Hayes', 'Benjamín Aceval', 'Puerto Pinasco'] },
+      { name: 'San Pedro', departments: ['San Pedro de Ycuamandiyú', 'San Estanislao', 'Capiibary', 'Santa Rosa del Aguaray'] }
+    ]
+  },
+  {
+    country: '🇲🇽 México',
+    provinces: [
+      { name: 'Aguascalientes', departments: ['Aguascalientes', 'Jesús María', 'Calvillo'] },
+      { name: 'Baja California', departments: ['Tijuana', 'Mexicali', 'Ensenada', 'Rosarito', 'Tecate'] },
+      { name: 'Baja California Sur', departments: ['La Paz', 'Los Cabos (Cabo San Lucas)', 'San José del Cabo', 'Loreto'] },
+      { name: 'Campeche', departments: ['San Francisco de Campeche', 'Ciudad del Carmen', 'Champotón'] },
+      { name: 'Chiapas', departments: ['Tuxtla Gutiérrez', 'Tapachula', 'San Cristóbal de las Casas', 'Comitán'] },
+      { name: 'Chihuahua', departments: ['Chihuahua', 'Ciudad Juárez', 'Cuauhtémoc', 'Delicias', 'Parral'] },
+      { name: 'CDMX (Ciudad de México)', departments: ['Polanco', 'Condesa', 'Roma', 'Coyoacán', 'Santa Fe', 'Del Valle', 'Centro Histórico', 'Tlalpan'] },
+      { name: 'Coahuila', departments: ['Saltillo', 'Torreón', 'Monclova', 'Piedras Negras'] },
+      { name: 'Colima', departments: ['Colima', 'Manzanillo', 'Villa de Álvarez'] },
+      { name: 'Durango', departments: ['Durango', 'Gómez Palacio', 'Lerdo'] },
+      { name: 'Estado de México', departments: ['Toluca', 'Ecatepec', 'Naucalpan', 'Tlalnepantla', 'Nezahualcóyotl', 'Metepec'] },
+      { name: 'Guanajuato', departments: ['León', 'Guanajuato', 'Irapuato', 'Celaya', 'San Miguel de Allende'] },
+      { name: 'Guerrero', departments: ['Acapulco', 'Chilpancingo', 'Iguala', 'Zihuatanejo'] },
+      { name: 'Hidalgo', departments: ['Pachuca', 'Tulancingo', 'Tula'] },
+      { name: 'Jalisco', departments: ['Guadalajara', 'Zapopan', 'Tlaquepaque', 'Tonalá', 'Puerto Vallarta'] },
+      { name: 'Michoacán', departments: ['Morelia', 'Uruapan', 'Zamora', 'Lázaro Cárdenas'] },
+      { name: 'Morelos', departments: ['Cuernavaca', 'Jiutepec', 'Cuautla'] },
+      { name: 'Nayarit', departments: ['Tepic', 'Bahía de Banderas', 'Compostela'] },
+      { name: 'Nuevo León', departments: ['Monterrey', 'San Pedro Garza García', 'Guadalupe', 'San Nicolás', 'Apodaca', 'Santa Catarina'] },
+      { name: 'Oaxaca', departments: ['Oaxaca de Juárez', 'Salina Cruz', 'San Juan Bautista Tuxtepec', 'Huatulco'] },
+      { name: 'Puebla', departments: ['Puebla de Zaragoza', 'Tehuacán', 'San Andrés Cholula', 'Atlixco'] },
+      { name: 'Querétaro', departments: ['Santiago de Querétaro', 'San Juan del Río', 'Corregidora', 'El Marqués'] },
+      { name: 'Quintana Roo', departments: ['Cancún', 'Playa del Carmen', 'Chetumal', 'Tulum', 'Cozumel'] },
+      { name: 'San Luis Potosí', departments: ['San Luis Potosí', 'Ciudad Valles', 'Matehuala'] },
+      { name: 'Sinaloa', departments: ['Culiacán', 'Mazatlán', 'Los Mochis', 'Guasave'] },
+      { name: 'Sonora', departments: ['Hermosillo', 'Ciudad Obregón', 'Nogales', 'San Luis Río Colorado', 'Guaymas'] },
+      { name: 'Tabasco', departments: ['Villahermosa', 'Cárdenas', 'Comalcalco'] },
+      { name: 'Tamaulipas', departments: ['Reynosa', 'Tampico', 'Matamoros', 'Nuevo Laredo', 'Ciudad Victoria'] },
+      { name: 'Tlaxcala', departments: ['Tlaxcala', 'Apizaco', 'Huamantla'] },
+      { name: 'Veracruz', departments: ['Veracruz', 'Xalapa', 'Coatzacoalcos', 'Boca del Río', 'Córdoba', 'Orizaba'] },
+      { name: 'Yucatán', departments: ['Mérida', 'Valladolid', 'Progreso', 'Tizimín'] },
+      { name: 'Zacatecas', departments: ['Zacatecas', 'Fresnillo', 'Guadalupe', 'Jerez'] }
+    ]
+  },
+  {
+    country: '🇧🇴 Bolivia',
+    provinces: [
+      { name: 'Beni', departments: ['Trinidad', 'Riberalta', 'Guayaramerín', 'San Borja'] },
+      { name: 'Chuquisaca', departments: ['Sucre', 'Monteagudo', 'Camargo'] },
+      { name: 'Cochabamba', departments: ['Cochabamba', 'Quillacollo', 'Sacaba', 'Tiquipaya', 'Punata'] },
+      { name: 'La Paz', departments: ['La Paz', 'El Alto', 'Viacha', 'Achacachi', 'Caranavi'] },
+      { name: 'Oruro', departments: ['Oruro', 'Huanuni', 'Challapata'] },
+      { name: 'Pando', departments: ['Cobija', 'Puerto Rico'] },
+      { name: 'Potosí', departments: ['Potosí', 'Uyuni', 'Villazón', 'Tupiza'] },
+      { name: 'Santa Cruz', departments: ['Santa Cruz de la Sierra', 'Montero', 'Warnes', 'Puerto Suárez', 'Vallegrande'] },
+      { name: 'Tarija', departments: ['Tarija', 'Yacuiba', 'Villamontes', 'Bermejo'] }
+    ]
+  },
+  {
+    country: '🇪🇸 España',
+    provinces: [
+      { name: 'Andalucía', departments: ['Sevilla', 'Málaga', 'Córdoba', 'Granada', 'Jerez de la Frontera', 'Almería', 'Marbella', 'Cádiz', 'Huelva'] },
+      { name: 'Aragón', departments: ['Zaragoza', 'Huesca', 'Teruel'] },
+      { name: 'Asturias', departments: ['Gijón', 'Oviedo', 'Avilés', 'Siero'] },
+      { name: 'Baleares (Islas)', departments: ['Palma de Mallorca', 'Ibiza', 'Manacor', 'Mahón'] },
+      { name: 'Canarias (Islas)', departments: ['Las Palmas de Gran Canaria', 'Santa Cruz de Tenerife', 'San Cristóbal de La Laguna', 'Telde', 'Arona'] },
+      { name: 'Cantabria', departments: ['Santander', 'Torrelavega', 'Castro Urdiales'] },
+      { name: 'Castilla-La Mancha', departments: ['Albacete', 'Toledo', 'Guadalajara', 'Ciudad Real', 'Talavera de la Reina', 'Cuenca'] },
+      { name: 'Castilla y León', departments: ['Valladolid', 'Burgos', 'Salamanca', 'León', 'Palencia', 'Ponferrada', 'Zamora', 'Segovia'] },
+      { name: 'Cataluña', departments: ['Barcelona', 'L\'Hospitalet de Llobregat', 'Badalona', 'Terrassa', 'Sabadell', 'Tarragona', 'Lleida', 'Girona'] },
+      { name: 'Ceuta (Ciudad Autónoma)', departments: ['Ceuta'] },
+      { name: 'Comunidad Valenciana', departments: ['Valencia', 'Alicante', 'Elche', 'Castellón de la Plana', 'Torrevieja', 'Gandía'] },
+      { name: 'Extremadura', departments: ['Badajoz', 'Cáceres', 'Mérida', 'Plasencia'] },
+      { name: 'Galicia', departments: ['Vigo', 'A Coruña', 'Ourense', 'Lugo', 'Santiago de Compostela', 'Pontevedra'] },
+      { name: 'Madrid (Comunidad)', departments: ['Madrid', 'Móstoles', 'Alcalá de Henares', 'Fuenlabrada', 'Leganés', 'Getafe', 'Alcorcón', 'Alcobendas'] },
+      { name: 'Melilla (Ciudad Autónoma)', departments: ['Melilla'] },
+      { name: 'Murcia', departments: ['Murcia', 'Cartagena', 'Lorca', 'Molina de Segura'] },
+      { name: 'Navarra', departments: ['Pamplona', 'Tudela', 'Barañáin'] },
+      { name: 'País Vasco', departments: ['Bilbao', 'Vitoria-Gasteiz', 'San Sebastián', 'Barakaldo', 'Getxo'] },
+      { name: 'La Rioja', departments: ['Logroño', 'Calahorra', 'Arnedo'] }
+    ]
+  },
+  {
+    country: '🇨🇴 Colombia',
+    provinces: [
+      { name: 'Antioquia', departments: ['Medellín', 'Bello', 'Itagüí', 'Envigado', 'Apartadó', 'Rionegro', 'Turbo'] },
+      { name: 'Atlántico', departments: ['Barranquilla', 'Soledad', 'Malambo', 'Sabanalarga', 'Puerto Colombia'] },
+      { name: 'Bogotá D.C.', departments: ['Usaquén', 'Chapinero', 'Suba', 'Engativá', 'Kennedy', 'Bosa', 'Fontibón'] },
+      { name: 'Bolívar', departments: ['Cartagena de Indias', 'Magangué', 'Turbaco', 'Arjona'] },
+      { name: 'Boyacá', departments: ['Tunja', 'Duitama', 'Sogamoso', 'Chiquinquirá'] },
+      { name: 'Caldas', departments: ['Manizales', 'La Dorada', 'Villamaría', 'Chinchiná'] },
+      { name: 'Caquetá', departments: ['Florencia', 'San Vicente del Caguán'] },
+      { name: 'Cauca', departments: ['Popayán', 'Santander de Quilichao', 'Puerto Tejada'] },
+      { name: 'Cesar', departments: ['Valledupar', 'Aguachica', 'Agustín Codazzi'] },
+      { name: 'Córdoba', departments: ['Montería', 'Lorica', 'Sahagún', 'Cereté'] },
+      { name: 'Cundinamarca', departments: ['Soacha', 'Chía', 'Zipaquirá', 'Facatativá', 'Fusagasugá', 'Mosquera'] },
+      { name: 'Huila', departments: ['Neiva', 'Pitalito', 'Garzón'] },
+      { name: 'La Guajira', departments: ['Riohacha', 'Maicao', 'Uribia', 'San Juan del Cesar'] },
+      { name: 'Magdalena', departments: ['Santa Marta', 'Ciénaga', 'Zona Bananera', 'Fundación'] },
+      { name: 'Meta', departments: ['Villavicencio', 'Acacías', 'Granada'] },
+      { name: 'Nariño', departments: ['Pasto', 'Tumaco', 'Ipiales'] },
+      { name: 'Norte de Santander', departments: ['Cúcuta', 'Ocaña', 'Villa del Rosario', 'Los Patios'] },
+      { name: 'Quindío', departments: ['Armenia', 'Calarcá', 'La Tebaida'] },
+      { name: 'Risaralda', departments: ['Pereira', 'Dosquebradas', 'Santa Rosa de Cabal'] },
+      { name: 'Santander', departments: ['Bucaramanga', 'Floridablanca', 'Barrancabermeja', 'Girón', 'Piedecuesta'] },
+      { name: 'Sucre', departments: ['Sincelejo', 'Corozal', 'San Marcos'] },
+      { name: 'Tolima', departments: ['Ibagué', 'Espinal', 'Melgar', 'Honda'] },
+      { name: 'Valle del Cauca', departments: ['Cali', 'Buenaventura', 'Palmira', 'Tuluá', 'Yumbo', 'Cartago', 'Buga'] },
+      { name: 'Resto del país (Amazonía/Orinoquía)', departments: ['San Andrés', 'Leticia', 'Yopal', 'Mocoa', 'Arauca', 'San José del Guaviare', 'Puerto Carreño', 'Quibdó', 'Inírida', 'Mitú'] }
+    ]
+  },
+  {
+    country: '🇻🇪 Venezuela',
+    provinces: [
+      { name: 'Amazonas', departments: ['Puerto Ayacucho', 'San Fernando de Atabapo'] },
+      { name: 'Anzoátegui', departments: ['Barcelona', 'Puerto La Cruz', 'Lechería', 'El Tigre', 'Anaco'] },
+      { name: 'Apure', departments: ['San Fernando de Apure', 'Guasdualito', 'Achaguas'] },
+      { name: 'Aragua', departments: ['Maracay', 'Turmero', 'Cagua', 'La Victoria', 'El Limón'] },
+      { name: 'Barinas', departments: ['Barinas', 'Socopó', 'Santa Bárbara'] },
+      { name: 'Bolívar', departments: ['Ciudad Guayana (Puerto Ordaz/San Félix)', 'Ciudad Bolívar', 'Upata', 'Caicara del Orinoco'] },
+      { name: 'Carabobo', departments: ['Valencia', 'Puerto Cabello', 'Guacara', 'San Diego', 'Mariara'] },
+      { name: 'Cojedes', departments: ['San Carlos', 'Tinaquillo'] },
+      { name: 'Delta Amacuro', departments: ['Tucupita', 'Curiapo'] },
+      { name: 'Distrito Capital', departments: ['Caracas (Municipio Libertador)'] },
+      { name: 'Falcón', departments: ['Coro', 'Punto Fijo', 'Tucacas', 'Dabajuro'] },
+      { name: 'Guárico', departments: ['San Juan de los Morros', 'Valle de la Pascua', 'Calabozo', 'Zaraza'] },
+      { name: 'Lara', departments: ['Barquisimeto', 'Cabudare', 'Carora', 'El Tocuyo'] },
+      { name: 'Mérida', departments: ['Mérida', 'El Vigía', 'Tovar', 'Ejido'] },
+      { name: 'Miranda', departments: ['Los Teques', 'Petare', 'Baruta', 'Chacao', 'Guarenas', 'Guatire', 'Ocumare del Tuy'] },
+      { name: 'Monagas', departments: ['Maturín', 'Punta de Mata', 'Caripe'] },
+      { name: 'Nueva Esparta', departments: ['Porlamar', 'Pampatar', 'La Asunción', 'Juan Griego'] },
+      { name: 'Portuguesa', departments: ['Acarigua', 'Guanare', 'Araure', 'Turén'] },
+      { name: 'Sucre', departments: ['Cumaná', 'Carúpano', 'Güiria'] },
+      { name: 'Táchira', departments: ['San Cristóbal', 'Táriba', 'Rubio', 'La Grita', 'San Antonio del Táchira'] },
+      { name: 'Trujillo', departments: ['Valera', 'Trujillo', 'Boconó'] },
+      { name: 'La Guaira (Vargas)', departments: ['La Guaira', 'Maiquetía', 'Catia La Mar', 'Macuto', 'Caraballeda'] },
+      { name: 'Yaracuy', departments: ['San Felipe', 'Yaritagua', 'Chivacoa'] },
+      { name: 'Zulia', departments: ['Maracaibo', 'San Francisco', 'Cabimas', 'Ciudad Ojeda', 'Machiques', 'Santa Bárbara del Zulia'] }
     ]
   }
 ];

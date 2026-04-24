@@ -34,6 +34,19 @@ export const CATEGORIES_DATA = [
     ] 
   },
   { 
+    // 👇 NUEVA CATEGORÍA: INMOBILIARIO 👇
+    id: 'real_estate', name: 'Inmobiliario', icon: 'business-outline',
+    subcategories: [
+      { id: 'real_estate_all', name: 'Todo Inmobiliario', icon: 'business-outline' },
+      { id: 'rent', name: 'Alquiler', icon: 'key-outline' },
+      { id: 'sale', name: 'Venta', icon: 'cash-outline' },
+      { id: 'temp_rent', name: 'Alquiler Temporario', icon: 'calendar-outline' },
+      { id: 'commercial', name: 'Comercial e Industrial', icon: 'storefront-outline' },
+      { id: 'land', name: 'Terrenos y Lotes', icon: 'map-outline' },
+      { id: 'parking', name: 'Cocheras', icon: 'car-sport-outline' },
+    ] 
+  },
+  { 
     id: 'services', name: 'Servicios', icon: 'briefcase-outline',
     subcategories: [
       { id: 'services_all', name: 'Todo Servicios', icon: 'briefcase-outline' },
@@ -79,6 +92,9 @@ export const CATEGORIES_DATA = [
       { id: 'auto_parts', name: 'Accesorios Autos', icon: 'build-outline' },
       { id: 'moto_parts', name: 'Accesorios Motos', icon: 'speedometer-outline' },
       { id: 'audio_car', name: 'Audio para Vehículos', icon: 'radio-outline' },
+      // 👇 NUEVAS SUBCATEGORÍAS AGREGADAS 👇
+      { id: 'premium_vehicles', name: 'Segmento Premium', icon: 'star-outline' },
+      { id: 'nautic_others', name: 'Náutica y otros', icon: 'boat-outline' },
     ] 
   },
   { 

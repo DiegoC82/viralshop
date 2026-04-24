@@ -400,8 +400,8 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('Para ti'); 
 
-  const { width } = useWindowDimensions();
-  const [feedHeight, setFeedHeight] = useState(Dimensions.get('window').height);
+  const { width } = Dimensions.get('window');
+  const [listHeight, setListHeight] = useState(Dimensions.get('window').height);
 
   // 👇 1. NUEVA FUNCIÓN: Cambia la pestaña y reinicia el video al primero 👇
   const handleTabChange = (tab: string) => {
@@ -469,14 +469,14 @@ export default function FeedScreen() {
   
   if (loading) {
     return (
-      <View style={[styles.videoContainer, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color={COLORS.accent} />
       </View>
     );
   }
 
   return (
-    <View style={styles.mainContainer} onLayout={(e) => setFeedHeight(e.nativeEvent.layout.height)}>
+    <View style={styles.mainContainer} onLayout={(e) => setListHeight(e.nativeEvent.layout.height)}>
       
       {/* 👇 AQUÍ ESTÁ LA MAGIA: Volvemos a poner el topNavContainer 👇 */}
       <View style={styles.topNavContainer}>
@@ -510,34 +510,46 @@ export default function FeedScreen() {
             isGlobalMuted={isGlobalMuted} 
             setIsGlobalMuted={setIsGlobalMuted}
             width={width}
-            height={feedHeight}
+            height={listHeight} // 👈 Altura exacta del contenedor
           />
         )}
-        keyExtractor={keyExtractor}      // 👈 Usamos la llave memorizada
+        keyExtractor={keyExtractor}
         pagingEnabled 
         showsVerticalScrollIndicator={false}
+        
+        // 👇 FRENADO EN SECO (Adiós asomos de videos) 👇
         snapToAlignment="start"
         decelerationRate="fast"
-        snapToInterval={feedHeight}
+        snapToInterval={listHeight}
+        disableIntervalMomentum={true} 
+        bounces={false} 
+        
+        // 👇 MATEMÁTICA EXACTA 👇
+        getItemLayout={(data, index) => ({
+          length: listHeight,
+          offset: listHeight * index,
+          index,
+        })}
+
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.accent} colors={[COLORS.accent]} />
         }
-        // 👇 AGREGAR ESTAS 4 LÍNEAS DE RENDIMIENTO 👇
-        initialNumToRender={3}           // Solo renderiza 3 videos al iniciar
-        maxToRenderPerBatch={3}          // Renderiza de a 3 mientras bajas
-        windowSize={5}                   // Mantiene en memoria 2 arriba, el actual, y 2 abajo
-        removeClippedSubviews={true}     // ¡Destruye los videos que quedan muy lejos!
+        
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        removeClippedSubviews={true}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: COLORS.background },
+  mainContainer: { flex: 1, backgroundColor: '#000' },
   videoWrapper: {  backgroundColor: '#000', overflow: 'hidden' }, 
-  videoContainer: { backgroundColor: COLORS.background },
+  videoContainer: { backgroundColor: '#000' },
   darkOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)' },
   
   // 👇 TEXTOS MÁS PEQUEÑOS Y MÁS ABAJO 👇

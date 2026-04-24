@@ -23,7 +23,7 @@ export default function RemateScreen() {
   const navigation = useNavigation<any>();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const [feedHeight, setFeedHeight] = useState(Dimensions.get('window').height);
 
   const { currency, exchangeRate } = useCurrency();
@@ -364,11 +364,11 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
 
   // 👇 PANTALLA VACÍA REDISEÑADA 👇
   const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
+    <View style={[styles.emptyContainer, { height: height }]}>
       <LinearGradient colors={['#1a0e2a', '#000']} style={StyleSheet.absoluteFillObject} />
       
+      {/* Todo el contenido se mantiene igual, pero ahora se moverá en conjunto */}
       <View style={styles.emptyIconCircle}>
-        {/* 👇 ÍCONO COMPUESTO GIGANTE PARA PANTALLA VACÍA 👇 */}
         <View style={{ width: 50, height: 55, justifyContent: 'center', alignItems: 'center' }}>
           <MaterialCommunityIcons
             name="gavel"
