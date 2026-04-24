@@ -2,14 +2,14 @@
 import { Controller, Get, Post, Param, Body, Request, UseGuards } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Expo } from 'expo-server-sdk'; // 👈 1. IMPORTAMOS EXPO
 
 @Controller('chats')
 export class ChatsController {
+  private expo = new Expo(); // 👈 2. INICIALIZAMOS EXPO
+
   constructor(private prisma: PrismaService) {}
 
-  // ==========================================
-  // 1. OBTENER LA BANDEJA DE ENTRADA (INBOX)
-  // ==========================================
   @UseGuards(JwtAuthGuard)
   @Get()
   async getChats(@Request() req) {
@@ -50,21 +50,16 @@ export class ChatsController {
     return formattedChats; 
   }
 
-  // ==========================================
-  // 2. LEER MENSAJES DE UN CHAT ESPECÍFICO
-  // ==========================================
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   async getChatMessages(@Param('id') chatId: string) {
     return this.prisma.message.findMany({
       where: { chatId },
-      orderBy: { createdAt: 'desc' } // Los más nuevos primero para la lista invertida
+      orderBy: { createdAt: 'desc' } 
     });
   }
 
-  // ==========================================
-  // 3. ENVIAR UN NUEVO MENSAJE
-  // ==========================================
+  // 👇 3. LA MAGIA SUCEDE AQUÍ: ENVIAR MENSAJE Y NOTIFICAR 👇
   @UseGuards(JwtAuthGuard)
   @Post(':id')
   async sendMessage(
@@ -74,28 +69,47 @@ export class ChatsController {
   ) {
     const senderId = req.user.sub;
 
+    // A. Guardamos el mensaje en la base de datos
     const newMessage = await this.prisma.message.create({
       data: { text, chatId, senderId }
     });
 
-    // Actualizamos la fecha del chat para que suba arriba en la bandeja de entrada
-    await this.prisma.chat.update({
+    // B. Actualizamos la fecha del chat y TRAEMOS A LOS PARTICIPANTES
+    const updatedChat = await this.prisma.chat.update({
       where: { id: chatId },
-      data: { updatedAt: new Date() }
+      data: { updatedAt: new Date() },
+      include: { participants: true } // Necesitamos sus datos para la notificación
     });
+
+    // C. Identificamos quién envía y quién recibe
+    const senderUser = updatedChat.participants.find(p => p.id === senderId);
+    const recipientUser = updatedChat.participants.find(p => p.id !== senderId);
+
+    // D. DISPARAMOS LA NOTIFICACIÓN PUSH AL CELULAR
+    if (recipientUser && recipientUser.pushToken && Expo.isExpoPushToken(recipientUser.pushToken)) {
+      const messages = [{
+        to: recipientUser.pushToken,
+        sound: 'default' as const, // Hace que el celular suene como WhatsApp
+        title: `Nuevo mensaje de @${senderUser?.username || 'ViralShop'}`,
+        body: text,
+        data: { chatId: chatId, type: 'chat_message' }, // Datos ocultos para abrir el chat al tocar
+      }];
+
+      try {
+        await this.expo.sendPushNotificationsAsync(messages);
+      } catch (error) {
+        console.error("Error enviando notificación Push:", error);
+      }
+    }
 
     return newMessage;
   }
 
-  // ==========================================
-  // NUEVO: INICIAR O BUSCAR UN CHAT EXISTENTE
-  // ==========================================
   @UseGuards(JwtAuthGuard)
   @Post('start/:userId')
   async findOrCreateChat(@Param('userId') targetUserId: string, @Request() req) {
     const currentUserId = req.user.sub;
 
-    // 1. Buscamos si ya existe un chat entre estas dos personas
     const existingChat = await this.prisma.chat.findFirst({
       where: {
         AND: [
@@ -107,7 +121,6 @@ export class ChatsController {
 
     if (existingChat) return existingChat;
 
-    // 2. Si no existe, creamos una sala de chat nueva para ellos
     return this.prisma.chat.create({
       data: {
         participants: {
