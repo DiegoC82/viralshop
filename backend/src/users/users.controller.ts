@@ -59,6 +59,12 @@ export class UsersController {
     return this.usersService.getPublicProfile(id, currentUserId);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Patch('active')
+  async updateActiveStatus(@Request() req: any) {
+    return this.usersService.updateLastActive(req.user.sub);
+  }
+
   // 👇 RUTA: Seguir / Dejar de seguir (Cambiamos req.user.id por req.user.sub)
   @UseGuards(JwtAuthGuard)
   @Post(':id/follow')

@@ -39,10 +39,18 @@ export class VideosService {
     });
     const followedIds = following.map(f => f.followingId);
 
-    return videos.map(video => ({
-      ...video,
-      isFollowing: followedIds.includes(video.userId)
-    }));
+    return videos.map(video => {
+      // Calculamos si la última actividad fue hace menos de 5 minutos (300,000 milisegundos)
+      const isOnline = video.user.lastActive 
+        ? (new Date().getTime() - new Date(video.user.lastActive).getTime()) < 300000 
+        : false;
+
+      return {
+        ...video,
+        user: { ...video.user, isOnline }, // Inyectamos el isOnline para el frontend
+        isFollowing: followedIds.includes(video.userId)
+      };
+    });
   }
 
   async toggleLike(videoId: string, userId: string) {

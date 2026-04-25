@@ -25,6 +25,7 @@ export class UsersService {
         avatarUrl: true,
         bio: true,           // Traemos la biografía
         isVerified: true,    // Traemos si está verificado
+        lastActive: true,
         createdAt: true, 
         videos: { 
           include: { 
@@ -65,8 +66,14 @@ export class UsersService {
       }
     });
 
+    // 👇 AGREGA EL CÁLCULO DE isOnline EXACTAMENTE AQUÍ 👇
+    const isOnline = user.lastActive 
+      ? (new Date().getTime() - new Date(user.lastActive).getTime()) < 300000 
+      : false;
+
     return {
       ...user,
+      isOnline,
       followersCount: user._count.followers,
       followingCount: user._count.following,
       likesCount: user._count.likes,
@@ -89,6 +96,7 @@ export class UsersService {
         avatarUrl: true,
         bio: true,
         isVerified: true,
+        lastActive: true,
         videos: { 
           where: { isAuction: false }, // Ocultamos los remates del perfil normal
           // 👇 3. AGREGAR ESTO PARA EL PERFIL DE OTROS 👇
@@ -113,8 +121,14 @@ export class UsersService {
       isFollowing = !!follow;
     }
 
+    // 👇 AGREGA EL CÁLCULO Y MODIFICA EL RETURN 👇
+    const isOnline = user.lastActive 
+      ? (new Date().getTime() - new Date(user.lastActive).getTime()) < 300000 
+      : false;
+
     return {
       ...user,
+      isOnline,
       followersCount: user._count.followers,
       followingCount: user._count.following,
       likesCount: user._count.likes,
