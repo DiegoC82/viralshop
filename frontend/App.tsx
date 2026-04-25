@@ -1,5 +1,5 @@
 // frontend/App.tsx
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback,  useEffect, useState, useRef } from 'react';
 import 'react-native-gesture-handler';
 import * as NavigationBar from 'expo-navigation-bar';
 import Constants from 'expo-constants';
@@ -27,6 +27,7 @@ import UploadScreen from './src/screens/UploadScreen';
 import VerifiedUpgradeScreen from './src/screens/VerifiedUpgradeScreen';
 import UploadRemateScreen from './src/screens/UploadRemateScreen';
 import CheckoutScreen from './src/screens/CheckoutScreen';
+import axios from 'axios';
 import AdultFeedScreen from './src/screens/AdultFeedScreen'; // Asegúrate de ajustar la ruta   
 import { CurrencyProvider } from './src/context/CurrencyContext';
 import { COLORS } from './src/theme/colors';
@@ -52,6 +53,23 @@ export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [initialRoute, setInitialRoute] = useState('Auth'); // 👇 ESTADO PARA SABER A DÓNDE IR
   const iconOpacity = useRef(new Animated.Value(0.03)).current; 
+
+  // 👇 AGREGA ESTE BLOQUE EXACTAMENTE AQUÍ (Latido automático) 👇
+  useEffect(() => {
+    const pingServer = async () => {
+      const token = await AsyncStorage.getItem('userToken');
+      if (token) {
+        axios.patch('https://viralshop-xr9v.onrender.com/users/active', {}, { 
+          headers: { Authorization: `Bearer ${token}` } 
+        }).catch(() => null);
+      }
+    };
+    
+    pingServer(); // Avisa apenas abres la app
+    const heartbeat = setInterval(pingServer, 60000); // Avisa cada 1 minuto
+    
+    return () => clearInterval(heartbeat);
+  }, []);
 
   useEffect(() => {
     const splashAnimation = Animated.loop(

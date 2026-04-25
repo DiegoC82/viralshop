@@ -8,8 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { COLORS } from '../theme/colors';
+import { TouchableWithoutFeedback } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Switch } from 'react-native'; // 👈 Asegúrate de importar Switch
 import { useCurrency } from '../context/CurrencyContext';
 import { formatCurrency } from '../utils/formatters';
 
@@ -115,6 +115,17 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted, 
     [{ nativeEvent: { translationX: translateX } }],
     { useNativeDriver: true }
   );
+
+  const blinkAnim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   const onHandlerStateChange = (event: any) => {
     if (event.nativeEvent.oldState === State.ACTIVE) {
@@ -237,6 +248,13 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted, 
         <Animated.View style={[styles.videoContainer, { width, height, transform: [{ translateX }] }]}>
           <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
           <View style={styles.darkOverlay} />
+
+          {/* 👇 REEMPLAZA TU VIDEOVIEW POR ESTE BLOQUE 👇 */}
+          <TouchableWithoutFeedback onPress={toggleMute}>
+            <View style={StyleSheet.absoluteFill}>
+              <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+            </View>
+          </TouchableWithoutFeedback>
           
           <View style={styles.infoOverlay}>
             <TouchableOpacity onPress={() => goToProfile(item.userId)} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
@@ -275,11 +293,12 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted, 
 
           {/* 👇 NUEVO ORDEN DEL MENÚ DERECHO INVERTIDO Y TRANSPARENTE 👇 */}
           <View style={styles.actionOverlay}>
-            
-            {/* 1. Mute (Global) */}
-            <TouchableOpacity style={styles.actionButton} onPress={toggleMute}>
-              <Ionicons name={isGlobalMuted ? "volume-mute" : "volume-high"} size={28} color="rgba(255,255,255,0.5)" />
-            </TouchableOpacity>
+            {/* 👇 AGREGA ESTE BLOQUE EXACTAMENTE AQUÍ (Arriba del corazón) 👇 */}
+            {isGlobalMuted && (
+              <TouchableOpacity style={styles.actionButton} onPress={toggleMute}>
+                <Ionicons name="volume-mute" size={32} color="rgba(255,255,255,0.8)" />
+              </TouchableOpacity>
+            )}
 
            {/* 2. Like */}
             <TouchableOpacity style={styles.actionButton} onPress={() => handleProtectedAction(toggleLike)}>
@@ -306,6 +325,12 @@ const FeedItem = React.memo(({ item, isActive, isGlobalMuted, setIsGlobalMuted, 
                     source={{ uri: avatarUri }} 
                     style={[styles.profilePic, item.user?.isVerified && { borderColor: '#1DA1F2' }]} 
                   />
+                  {/* 👇 AGREGA EL PUNTO DE CONEXIÓN EXACTAMENTE AQUÍ 👇 */}
+                  <Animated.View style={[
+                    styles.onlineDotFeed,
+                    { backgroundColor: item.user?.isOnline ? COLORS.accent : '#888888' }, // Rosado online, gris offline
+                    item.user?.isOnline ? { opacity: blinkAnim } : { opacity: 1 }      // Solo titila si está online
+                  ]} />
                   {/* 👇 MINI ESCUDO EN LA FOTO DEL FEED 👇 */}
                   {item.user?.isVerified && (
                     <View style={styles.feedVerifiedBadge}>
@@ -400,8 +425,8 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('Para ti'); 
 
-  const { width } = Dimensions.get('window');
-  const [listHeight, setListHeight] = useState(Dimensions.get('window').height);
+  const { width } = useWindowDimensions();
+  const [listHeight, setListHeight] = useState(0);
 
   // 👇 1. NUEVA FUNCIÓN: Cambia la pestaña y reinicia el video al primero 👇
   const handleTabChange = (tab: string) => {
@@ -501,6 +526,7 @@ export default function FeedScreen() {
         
       </View>
 
+      {listHeight > 0 && (
       <FlatList
         data={filteredVideos}
         renderItem={({ item, index }) => (
@@ -542,6 +568,7 @@ export default function FeedScreen() {
         windowSize={5}
         removeClippedSubviews={true}
       />
+      )}
     </View>
   );
 }
@@ -553,12 +580,12 @@ const styles = StyleSheet.create({
   darkOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.2)' },
   
   // 👇 TEXTOS MÁS PEQUEÑOS Y MÁS ABAJO 👇
-  infoOverlay: { position: 'absolute', bottom: 50, left: 15, right: 75},
+  infoOverlay: { position: 'absolute', bottom: 70, left: 15, right: 75},
   username: { color: COLORS.text, fontSize: 15, fontWeight: 'bold', marginBottom: 10, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
   description: { color: COLORS.text, fontSize: 13, marginBottom: 30, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
   
   // 👇 MENÚ LATERAL MÁS ABAJO 👇
-  actionOverlay: { position: 'absolute', bottom: 70, right: 10, alignItems: 'center' },
+  actionOverlay: { position: 'absolute', bottom: 90, right: 10, alignItems: 'center' },
   actionButton: { alignItems: 'center', marginBottom: 20 },
   actionText: {
     color: 'rgba(255,255,255,0.9)',
@@ -569,6 +596,11 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
+  
+  // 👇 FOTO DE PERFIL AHORA ESTÁ ABAJO, ASÍ QUE LLEVA MARGIN TOP 👇
+  profileContainer: { alignItems: 'center', marginTop: 5 },
+  profilePic: { width: 50, height: 50, borderRadius: 25, borderWidth: 2, borderColor: COLORS.accent },
+  followButton: { position: 'absolute', bottom: -10, backgroundColor: COLORS.primary, width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
 
   feedVerifiedBadge: {
     position: 'absolute',
@@ -581,11 +613,17 @@ const styles = StyleSheet.create({
     borderColor: '#000',
     zIndex: 2,
   },
-  
-  // 👇 FOTO DE PERFIL AHORA ESTÁ ABAJO, ASÍ QUE LLEVA MARGIN TOP 👇
-  profileContainer: { alignItems: 'center', marginTop: 5 },
-  profilePic: { width: 50, height: 50, borderRadius: 25, borderWidth: 2, borderColor: COLORS.accent },
-  followButton: { position: 'absolute', bottom: -10, backgroundColor: COLORS.primary, width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  onlineDotFeed: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#000', // El borde negro hace que resalte sobre la foto
+    zIndex: 10,
+  },
   
   productTag: { flexDirection: 'row', backgroundColor: COLORS.accent, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center', marginBottom: 12, alignSelf: 'flex-start', maxWidth: '90%', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.5, shadowRadius: 3, elevation: 5 },
   productName: { color: '#000', fontWeight: 'bold', fontSize: 13, marginLeft: 5, marginRight: 8, flexShrink: 1 },

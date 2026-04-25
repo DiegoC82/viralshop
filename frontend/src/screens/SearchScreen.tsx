@@ -1,6 +1,10 @@
 // frontend/src/screens/SearchScreen.tsx
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, Image, StatusBar, Modal, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, 
+  Image, StatusBar, Modal, ScrollView, Dimensions, ActivityIndicator, 
+  Animated // 👈 AGREGA Animated
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native'; 
@@ -59,6 +63,16 @@ export default function SearchScreen({ navigation }: any) {
   const [deptDropdownVisible, setDeptDropdownVisible] = useState(false);
   
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+
+  const blinkAnim = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   const countriesList = LOCATIONS_DATA.map(c => c.country);
   const provincesList = LOCATIONS_DATA.find(c => c.country === selectedCountry)?.provinces.map(p => p.name) || [];
@@ -364,8 +378,34 @@ export default function SearchScreen({ navigation }: any) {
                 </View>
 
                 {/* Avatar del Usuario (Arriba-Izquierda) */}
-                <View style={styles.userAvatarBadge}>
-                  <Image source={{ uri: avatarUri }} style={styles.miniAvatar} />
+                <View style={styles.userInfoBadge}>
+                  <View style={{ position: 'relative' }}>
+                    <Image 
+                      source={{ uri: avatarUri }} 
+                      style={[styles.miniAvatar, item.user?.isVerified && { borderColor: '#1DA1F2' }]} 
+                    />
+                    {/* Punto de Conexión */}
+                    <Animated.View style={[
+                      styles.onlineDotSearch,
+                      { backgroundColor: item.user?.isOnline ? COLORS.accent : '#888888' },
+                      item.user?.isOnline ? { opacity: blinkAnim } : { opacity: 1 }
+                    ]} />
+                    {/* Mini Escudo en la Foto */}
+                    {item.user?.isVerified && (
+                      <View style={styles.verifiedBadgeMini}>
+                        <Ionicons name="shield-checkmark" size={6} color="#FFF" />
+                      </View>
+                    )}
+                  </View>
+
+                  <Text style={styles.miniUsername} numberOfLines={1}>
+                    {item.user?.username || 'usuario'}
+                  </Text>
+                  
+                  {/* Escudo junto al Nombre */}
+                  {item.user?.isVerified && (
+                    <Ionicons name="shield-checkmark" size={10} color="#1DA1F2" style={{ marginLeft: 2 }} />
+                  )}
                 </View>
 
                 {/* Detalle/Descripción corta (Sobre el precio) */}
@@ -444,12 +484,29 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 5, right: 5, 
     backgroundColor: 'rgba(0,0,0,0.4)', padding: 4, borderRadius: 10 
   },
-  userAvatarBadge: {
+  userInfoBadge: {
     position: 'absolute', top: 5, left: 5,
-    backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 12
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)', paddingRight: 6, borderRadius: 12,
+    maxWidth: '70%' // Evita que un nombre larguísimo pise el ícono derecho
   },
   miniAvatar: {
     width: 22, height: 22, borderRadius: 11, borderWidth: 1, borderColor: COLORS.accent
+  },
+  verifiedBadgeMini: {
+    position: 'absolute', bottom: -2, right: -2, backgroundColor: '#1DA1F2',
+    borderRadius: 6, padding: 1, borderWidth: 1, borderColor: COLORS.background, zIndex: 2,
+  },
+  onlineDotSearch: {
+    position: 'absolute', top: 0, right: 0, width: 8, height: 8, borderRadius: 4,
+    borderWidth: 1, borderColor: COLORS.background, zIndex: 10,
+  },
+  miniUsername: {
+    color: '#FFF', fontSize: 9, fontWeight: 'bold', marginLeft: 4, flexShrink: 1
+  },
+  userAvatarBadge: {
+    position: 'absolute', top: 5, left: 5,
+    backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 12
   },
   videoDetailOverlay: { 
     position: 'absolute', bottom: 25, left: 5, right: 5 

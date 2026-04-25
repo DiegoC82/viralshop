@@ -1,5 +1,5 @@
 // frontend/src/screens/ProfileScreen.tsx
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -11,7 +11,8 @@ import {
   ActivityIndicator, 
   Alert,
   TextInput,
-  Modal
+  Modal,
+  Animated
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -34,6 +35,15 @@ export default function ProfileScreen({ navigation, route }: any) {
   // Estados de Datos
   const [profile, setProfile] = useState<any>(null);
   const { currency, toggleCurrency, exchangeRate } = useCurrency(); // 👈 Llama a tu cerebro global
+  const blinkAnim = useRef(new Animated.Value(0.3)).current;
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
   // Estados de UI y Auth
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -409,6 +419,13 @@ const handleSaveThumbnail = async () => {
                       />
                     )}
                     
+                    {/* 👇 PUNTO DE CONEXIÓN 👇 */}
+                    <Animated.View style={[
+                      styles.onlineDotProfile,
+                      { backgroundColor: profile?.isOnline ? COLORS.accent : '#888888' },
+                      profile?.isOnline ? { opacity: blinkAnim } : { opacity: 1 }
+                    ]} />
+
                     {/* 👇 ESCUDO AGREGADO AQUÍ 👇 */}
                     {profile?.isVerified && (
                       <View style={styles.verifiedBadgePhoto}>
@@ -667,7 +684,7 @@ const handleSaveThumbnail = async () => {
                 // 👇 INYECTAMOS LA FOTO Y NOMBRE DEL PERFIL 👇
                 const videosConUsuario = getActiveData().map((v: any) => ({
                   ...v,
-                  user: { username: profile?.username, avatarUrl: profile?.avatarUrl }
+                  user: { username: profile?.username, avatarUrl: profile?.avatarUrl, isVerified: profile?.isVerified, isOnline: profile?.isOnline}
                 }));
                 navigation.navigate('SingleVideo', { videos: videosConUsuario, initialIndex: index });
               }}
@@ -1039,6 +1056,17 @@ const styles = StyleSheet.create({
     padding: 1,
     borderWidth: 2,
     borderColor: COLORS.background
+  },
+  onlineDotProfile: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2.5,
+    borderColor: COLORS.background,
+    zIndex: 10,
   },
   
   // Perfil Info

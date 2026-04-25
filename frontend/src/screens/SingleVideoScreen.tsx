@@ -1,16 +1,13 @@
 // frontend/src/screens/SingleVideoScreen.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  StyleSheet, Text, View, FlatList, TouchableOpacity, Image, 
-  Dimensions, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, 
-  Platform, Share, Alert 
-} from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, Dimensions, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Share, Alert, useWindowDimensions } from 'react-native';
 import { useIsFocused } from '@react-navigation/native'; 
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { TouchableWithoutFeedback, Animated } from 'react-native';
 import * as Location from 'expo-location'; 
 import { COLORS } from '../theme/colors';
 import { useCurrency } from '../context/CurrencyContext';
@@ -39,6 +36,16 @@ const ContextualVideoItem = React.memo(({ item, isActive, width, height, navigat
     player.loop = true;
     player.muted = isGlobalMuted;
   });
+
+  const blinkAnim = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   useEffect(() => { player.muted = isGlobalMuted; }, [isGlobalMuted, player]);
   useEffect(() => { if (isActive) player.play(); else player.pause(); }, [isActive, player]);
@@ -111,9 +118,25 @@ const ContextualVideoItem = React.memo(({ item, isActive, width, height, navigat
   const username = item.user?.username || 'creador';
   const avatarUri = item.user?.avatarUrl || `https://ui-avatars.com/api/?name=${username}&background=random&color=fff&size=150`;
 
+  const toggleMute = () => {
+    setIsGlobalMuted(!isGlobalMuted);
+  };
+
   return (
     <View style={[styles.videoWrapper, { width, height }]}>
-      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+
+      {/* 👇 REEMPLAZA TU VIDEOVIEW SOLITARIO POR ESTO 👇 */}
+      <TouchableWithoutFeedback onPress={toggleMute}>
+        <View style={StyleSheet.absoluteFill}>
+          <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+          
+          {isGlobalMuted && (
+            <View style={styles.muteIndicatorOverlay}>
+              <Ionicons name="volume-mute" size={40} color="rgba(255,255,255,0.8)" />
+            </View>
+          )}
+        </View>
+      </TouchableWithoutFeedback>
 
       {/* Info Inferior */}
       <View style={styles.infoOverlay}>
@@ -123,8 +146,14 @@ const ContextualVideoItem = React.memo(({ item, isActive, width, height, navigat
             <Text style={styles.locationText}>{cityName || 'Local'}</Text>
           </View>
         )}
-        <TouchableOpacity onPress={() => navigation.navigate('PublicProfile', { userId: item.userId })}>
-          <Text style={styles.username}>@{username}</Text>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('PublicProfile', { userId: item.userId })}
+          style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}
+        >
+          <Text style={[styles.username, { marginBottom: 0 }]}>@{username}</Text>
+          {item.user?.isVerified && (
+            <Ionicons name="shield-checkmark" size={14} color="#1DA1F2" style={{ marginLeft: 5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }} />
+          )}
         </TouchableOpacity>
         <Text style={styles.description}>{item.description}</Text>
 
@@ -151,9 +180,12 @@ const ContextualVideoItem = React.memo(({ item, isActive, width, height, navigat
 
       {/* Menú Lateral */}
       <View style={styles.actionOverlay}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => setIsGlobalMuted(!isGlobalMuted)}>
-          <Ionicons name={isGlobalMuted ? "volume-mute" : "volume-high"} size={28} color="rgba(255,255,255,0.6)" />
-        </TouchableOpacity>
+
+        {isGlobalMuted && (
+          <TouchableOpacity style={styles.actionButton} onPress={toggleMute}>
+            <Ionicons name="volume-mute" size={32} color="rgba(255,255,255,0.8)" />
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity style={styles.actionButton} onPress={toggleLike}>
           <Ionicons name={isLiked ? "heart" : "heart-outline"} size={32} color={isLiked ? "#FF2D55" : "rgba(255,255,255,0.8)"} />
@@ -171,7 +203,24 @@ const ContextualVideoItem = React.memo(({ item, isActive, width, height, navigat
 
         <View style={styles.profileContainer}>
           <TouchableOpacity onPress={() => navigation.navigate('PublicProfile', { userId: item.userId })}>
-            <Image source={{ uri: avatarUri }} style={styles.profilePic} />
+            <View style={{ position: 'relative' }}>
+              <Image 
+                source={{ uri: avatarUri }} 
+                style={[styles.profilePic, item.user?.isVerified && { borderColor: '#1DA1F2' }]} 
+              />
+              {/* 👇 PUNTO DE ESTADO CON TU COLOR ACENTUADO 👇 */}
+              <Animated.View style={[
+                styles.onlineDotFeed,
+                { backgroundColor: item.user?.isOnline ? COLORS.accent : '#888888' }, // 👈 Usa COLORS.accent
+                item.user?.isOnline ? { opacity: blinkAnim } : { opacity: 1 }
+              ]} />
+              {/* 👇 MINI ESCUDO EN LA FOTO 👇 */}
+              {item.user?.isVerified && (
+                <View style={styles.feedVerifiedBadge}>
+                  <Ionicons name="shield-checkmark" size={10} color="#FFF" />
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
           <TouchableOpacity style={styles.followButton}>
             <Ionicons name="add" size={14} color="#FFF" />
@@ -241,10 +290,12 @@ export default function SingleVideoScreen({ route, navigation }: any) {
   const initialIndex = (rawIndex >= 0 && rawIndex < videoList.length) ? rawIndex : 0;
 
   const insets = useSafeAreaInsets();
-  const { width, height: screenHeight } = Dimensions.get('window'); // Usamos Dimensions directo
   const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [isGlobalMuted, setIsGlobalMuted] = useState(false);
   const isFocused = useIsFocused();
+
+  const { width } = useWindowDimensions();
+  const [containerHeight, setContainerHeight] = useState(0);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index);
@@ -259,35 +310,44 @@ export default function SingleVideoScreen({ route, navigation }: any) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}>
       <TouchableOpacity style={[styles.backButton, { top: Math.max(insets.top, 20) }]} onPress={() => navigation.goBack()}>
         <Ionicons name="chevron-back" size={28} color="#FFF" />
       </TouchableOpacity>
 
-      <FlatList
-        data={videoList}
-        keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()}
-        renderItem={({ item, index }) => (
-          <ContextualVideoItem
-            item={item}
-            isActive={index === activeIndex && isFocused}
-            width={width}
-            height={screenHeight}
-            navigation={navigation}
-            isGlobalMuted={isGlobalMuted}
-            setIsGlobalMuted={setIsGlobalMuted}
-          />
-        )}
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        snapToInterval={screenHeight}
-        getItemLayout={(_, i) => ({ length: screenHeight, offset: screenHeight * i, index: i })}
-        initialScrollIndex={initialIndex}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
-      />
+      
+
+      {containerHeight > 0 && (
+        <FlatList
+          data={videoList}
+          keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()}
+          renderItem={({ item, index }) => (
+            <ContextualVideoItem
+              item={item}
+              isActive={index === activeIndex && isFocused}
+              width={width}
+              height={containerHeight} // 👈 Le pasamos la nueva altura perfecta
+              navigation={navigation}
+              isGlobalMuted={isGlobalMuted}
+              setIsGlobalMuted={setIsGlobalMuted}
+            />
+          )}
+          pagingEnabled
+          showsVerticalScrollIndicator={false}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          snapToInterval={containerHeight} // 👈
+          
+          // 👇 LAS DOS LÍNEAS ANTI-FRANJA QUE FALTABAN 👇
+          disableIntervalMomentum={true}
+          bounces={false}
+          
+          getItemLayout={(_, i) => ({ length: containerHeight, offset: containerHeight * i, index: i })}
+          initialScrollIndex={initialIndex}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+        />
+      )}
     </View>
   );
 }
@@ -301,21 +361,58 @@ const styles = StyleSheet.create({
   backButton: { position: 'absolute', left: 20, zIndex: 100, backgroundColor: 'rgba(0,0,0,0.4)', padding: 8, borderRadius: 20 },
   
   // Info Inferior levantada para que el menú Main no lo tape
-  infoOverlay: { position: 'absolute', bottom: 100, left: 15, right: 75, zIndex: 10 },
+  infoOverlay: { position: 'absolute', bottom: 85, left: 15, right: 75},
   locationTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, marginBottom: 8 },
   locationText: { color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 },
-  username: { color: '#FFF', fontSize: 15, fontWeight: 'bold', marginBottom: 5 },
+  username: { color: COLORS.text, fontSize: 15, fontWeight: 'bold', marginBottom: 10, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
   description: { color: '#EEE', fontSize: 13, marginBottom: 15 },
   productTag: { flexDirection: 'row', backgroundColor: COLORS.accent, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center', alignSelf: 'flex-start' },
   productName: { color: '#000', fontWeight: 'bold', fontSize: 13, marginLeft: 5, marginRight: 8, flexShrink: 1 },
   productPrice: { color: '#000', fontWeight: '900', fontSize: 13, marginRight: 5 },
+
+  feedVerifiedBadge: {
+    position: 'absolute',
+    top: 30,
+    right: -1,
+    backgroundColor: '#1DA1F2',
+    borderRadius: 8,
+    padding: 2,
+    borderWidth: 1.5,
+    borderColor: '#000',
+    zIndex: 2,
+  },
+  muteIndicatorOverlay: { 
+    position: 'absolute', 
+    top: '50%', 
+    left: '50%', 
+    marginTop: -35, 
+    marginLeft: -35, 
+    backgroundColor: 'rgba(0,0,0,0.4)', 
+    padding: 15, 
+    borderRadius: 40, 
+    zIndex: 10, 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  // 👇 AGREGA ESTE ESTILO EN TUS STYLES DE AMBOS ARCHIVOS 👇
+  onlineDotFeed: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#000', // El borde negro hace que resalte sobre la foto
+    zIndex: 10,
+  },
   
   // Botones levantados
-  actionOverlay: { position: 'absolute', bottom: 110, right: 10, alignItems: 'center', zIndex: 10 },
+  actionOverlay: { position: 'absolute', bottom: 90, right: 10, alignItems: 'center' },
   actionButton: { alignItems: 'center', marginBottom: 20 },
   actionText: { color: '#FFF', fontSize: 12, fontWeight: 'bold', marginTop: 2 },
   profileContainer: { alignItems: 'center', marginTop: 5 },
-  profilePic: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: COLORS.accent },
+  profilePic: { width: 50, height: 50, borderRadius: 25, borderWidth: 2, borderColor: COLORS.accent },
   followButton: { position: 'absolute', bottom: -5, backgroundColor: COLORS.primary, width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
 
   // Estilos del Modal de Comentarios

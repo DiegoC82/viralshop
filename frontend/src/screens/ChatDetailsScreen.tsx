@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   View, Text, StyleSheet, TouchableOpacity, SafeAreaView, 
-  KeyboardAvoidingView, Platform, TextInput, FlatList, ActivityIndicator 
+  KeyboardAvoidingView, Platform, TextInput, FlatList, ActivityIndicator,
+  Image, Animated // 👈 ¡AGREGA ESTO!
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,13 +14,25 @@ import { COLORS } from '../theme/colors';
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
 export default function ChatDetailsScreen({ route, navigation }: any) {
-  const { chatId, chatName } = route.params;
+  const { chatId, chatName, avatar, isVerified, isOnline } = route.params;
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<any[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(true);
   const [myUserId, setMyUserId] = useState<string | null>(null);
+  // ... (tus otros estados) ...
+
+  // 👇 2. ANIMACIÓN DEL LATIDO 👇
+  const blinkAnim = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   // 1. Cargar el historial de mensajes desde el servidor
   const fetchMessages = async () => {
@@ -93,14 +106,40 @@ export default function ChatDetailsScreen({ route, navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* CABECERA SUPERIOR */}
-      <View style={styles.header}>
+    <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={28} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{chatName}</Text>
+        
+        <View style={styles.headerUserInfo}>
+          <View style={{ position: 'relative', marginRight: 10 }}>
+            <Image 
+              source={{ uri: avatar || 'https://via.placeholder.com/150' }} 
+              style={[styles.headerAvatar, isVerified && { borderColor: '#1DA1F2', borderWidth: 1.5 }]} 
+            />
+            
+            <Animated.View style={[
+              styles.onlineDotHeader,
+              { backgroundColor: isOnline ? COLORS.accent : '#888888' },
+              isOnline ? { opacity: blinkAnim } : { opacity: 1 }
+            ]} />
+
+            {isVerified && (
+              <View style={styles.verifiedBadgeHeader}>
+                <Ionicons name="shield-checkmark" size={8} color="#FFF" />
+              </View>
+            )}
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.headerTitle}>{chatName}</Text>
+            {isVerified && <Ionicons name="shield-checkmark" size={16} color="#1DA1F2" style={{ marginLeft: 4 }} />}
+          </View>
+        </View>
+
         <View style={styles.headerRight} />
       </View>
+      
 
       {/* ÁREA DE MENSAJES */}
       <KeyboardAvoidingView 
@@ -150,7 +189,7 @@ export default function ChatDetailsScreen({ route, navigation }: any) {
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
+    );
 }
 
 const styles = StyleSheet.create({
@@ -167,6 +206,16 @@ const styles = StyleSheet.create({
   backButton: { paddingHorizontal: 15, width: 50 },
   headerTitle: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
   headerRight: { width: 50 },
+  headerUserInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'center' },
+  headerAvatar: { width: 34, height: 34, borderRadius: 17 },
+  verifiedBadgeHeader: {
+    position: 'absolute', bottom: -2, right: -2, backgroundColor: '#1DA1F2',
+    borderRadius: 8, padding: 1, borderWidth: 1.5, borderColor: COLORS.background, zIndex: 2,
+  },
+  onlineDotHeader: {
+    position: 'absolute', top: 0, right: 0, width: 10, height: 10, borderRadius: 5,
+    borderWidth: 1.5, borderColor: COLORS.background, zIndex: 10,
+  },
   
   messagesContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   placeholderText: { color: COLORS.textMuted, fontSize: 16, marginTop: 10 },

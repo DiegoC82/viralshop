@@ -1,8 +1,8 @@
 // frontend/src/screens/PublicProfileScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, Image, FlatList, TouchableOpacity, 
-  Dimensions, ActivityIndicator, Alert, Share, Modal 
+  Dimensions, ActivityIndicator, Alert, Share, Modal , Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,7 +23,20 @@ export default function PublicProfileScreen({ route, navigation }: any) {
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  // 👇 1. RESTAURAMOS isFollowing QUE SE HABÍA BORRADO 👇
   const [isFollowing, setIsFollowing] = useState(false);
+
+  // 👇 2. ANIMACIÓN DEL LATIDO 👇
+  const blinkAnim = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   useEffect(() => {
     fetchPublicProfile();
@@ -160,6 +173,15 @@ export default function PublicProfileScreen({ route, navigation }: any) {
                       source={{ uri: avatarUri }} 
                       style={[styles.avatar, profile?.isVerified ? { borderColor: '#1DA1F2', borderWidth: 3 } : { borderColor: COLORS.accent, borderWidth: 3 }]} 
                     />
+                    
+                    {/* 👇 PUNTO DE CONEXIÓN 👇 */}
+                    <Animated.View style={[
+                      styles.onlineDotProfile,
+                      { backgroundColor: profile?.isOnline ? COLORS.accent : '#888888' },
+                      profile?.isOnline ? { opacity: blinkAnim } : { opacity: 1 }
+                    ]} />
+
+                    {/* 👇 ESCUDO 👇 */}
                     {profile?.isVerified && (
                       <View style={styles.verifiedBadgePhoto}>
                         <Ionicons name="shield-checkmark" size={22} color="#FFF" />
@@ -354,6 +376,17 @@ const styles = StyleSheet.create({
     padding: 1,
     borderWidth: 2,
     borderColor: COLORS.background
+  },
+  onlineDotProfile: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2.5,
+    borderColor: COLORS.background, // Borde del color de fondo para que recorte la foto
+    zIndex: 10,
   },
   
   // BOTONES (Ocupando todo el ancho)

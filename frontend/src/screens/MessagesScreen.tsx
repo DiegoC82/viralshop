@@ -1,14 +1,8 @@
 // frontend/src/screens/MessagesScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  Image, 
-  TouchableOpacity, 
-  ActivityIndicator,
-  RefreshControl 
+  View, Text, StyleSheet, FlatList, Image, TouchableOpacity, 
+  ActivityIndicator, RefreshControl, Animated // 👈 AGREGA Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
@@ -24,6 +18,8 @@ interface Chat {
   time: string;
   avatar: string;
   unreadCount?: number;
+  isVerified?: boolean;
+  isOnline?: boolean;
 }
 
 // Datos de prueba temporales mientras creamos la ruta en el backend
@@ -37,6 +33,16 @@ export default function MessagesScreen({ navigation }: any) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  const blinkAnim = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   const fetchChats = async () => {
     try {
@@ -103,14 +109,42 @@ export default function MessagesScreen({ navigation }: any) {
           renderItem={({ item }) => (
             <TouchableOpacity 
               style={styles.chatRow}
-              onPress={() => navigation.navigate('ChatDetails', { chatId: item.id, chatName: item.name })}
+              onPress={() => navigation.navigate('ChatDetails', { 
+                chatId: item.id, 
+                chatName: item.name,
+                avatar: item.avatar,          // 👈 Le pasamos la foto al chat
+                isVerified: item.isVerified,  // 👈 Le pasamos el escudo al chat
+                isOnline: item.isOnline       // 👈 Le pasamos el punto al chat
+              })}
             >
-              <Image 
-                source={{ uri: item.avatar || 'https://via.placeholder.com/150' }} 
-                style={styles.avatar} 
-              />
+              {/* 👇 FOTO CON ESCUDO Y PUNTO DE CONEXIÓN 👇 */}
+              <View style={{ position: 'relative' }}>
+                <Image 
+                  source={{ uri: item.avatar || 'https://via.placeholder.com/150' }} 
+                  style={[styles.avatar, item.isVerified && { borderColor: '#1DA1F2', borderWidth: 2 }]} 
+                />
+                
+                <Animated.View style={[
+                  styles.onlineDotChat,
+                  { backgroundColor: item.isOnline ? COLORS.accent : '#888888' },
+                  item.isOnline ? { opacity: blinkAnim } : { opacity: 1 }
+                ]} />
+
+                {item.isVerified && (
+                  <View style={styles.verifiedBadgePhoto}>
+                    <Ionicons name="shield-checkmark" size={10} color="#FFF" />
+                  </View>
+                )}
+              </View>
+
+              {/* 👇 NOMBRE CON ESCUDO 👇 */}
               <View style={styles.chatInfo}>
-                <Text style={styles.chatName}>{item.name}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <Text style={styles.chatName}>{item.name}</Text>
+                  {item.isVerified && (
+                    <Ionicons name="shield-checkmark" size={14} color="#1DA1F2" style={{ marginLeft: 4 }} />
+                  )}
+                </View>
                 <Text style={styles.chatMsg} numberOfLines={1}>
                   {item.lastMessage}
                 </Text>
@@ -149,7 +183,15 @@ const styles = StyleSheet.create({
   chatRow: { flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 15, alignItems: 'center' },
   avatar: { width: 56, height: 56, borderRadius: 28 },
   chatInfo: { flex: 1, marginLeft: 15, justifyContent: 'center' },
-  chatName: { color: COLORS.text, fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  chatName: { color: COLORS.text, fontSize: 16, fontWeight: '600' },
+  verifiedBadgePhoto: {
+    position: 'absolute', bottom: 0, right: 0, backgroundColor: '#1DA1F2',
+    borderRadius: 8, padding: 2, borderWidth: 1.5, borderColor: COLORS.background, zIndex: 2,
+  },
+  onlineDotChat: {
+    position: 'absolute', top: 2, right: 0, width: 12, height: 12, borderRadius: 6,
+    borderWidth: 1.5, borderColor: COLORS.background, zIndex: 10,
+  },
   chatMsg: { color: COLORS.textMuted, fontSize: 14 },
   rightContent: { alignItems: 'flex-end', justifyContent: 'center' },
   chatTime: { color: COLORS.textMuted, fontSize: 12, marginBottom: 5 },

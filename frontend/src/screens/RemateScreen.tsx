@@ -72,6 +72,15 @@ const TimerBadge = React.memo(({ endDate, insetsTop }: { endDate: string, insets
 const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim, handleQuickBid, shareAuction, insetsTop, width, height }: any) => {
   const navigation = useNavigation<any>(); // 👈 Necesario para ir a perfiles desde los comentarios
   const topBidder = item.bids && item.bids.length > 0 ? item.bids[0].user.username : 'Sé el primero';
+  const blinkAnim = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
   const totalBids = item.bids ? item.bids.length : 0;
   const isHot = totalBids > 3;
 
@@ -147,9 +156,38 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
 
       <View style={styles.contentBottom}>
         <View style={styles.sellerInfo}>
-          <Image source={{ uri: item.user?.avatarUrl || `https://i.pravatar.cc/150?u=${item.userId}` }} style={styles.avatarImage} />
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('PublicProfile', { userId: item.userId })}
+            style={{ position: 'relative', marginRight: 10 }}
+          >
+            <Image 
+              source={{ uri: item.user?.avatarUrl || `https://i.pravatar.cc/150?u=${item.userId}` }} 
+              style={[styles.avatarImage, item.user?.isVerified && { borderColor: '#1DA1F2' }]} 
+            />
+            
+            {/* Punto de Conexión (Rosado/Violeta Accent) */}
+            <Animated.View style={[
+              styles.onlineDotRemate,
+              { backgroundColor: item.user?.isOnline ? COLORS.accent : '#888888' },
+              item.user?.isOnline ? { opacity: blinkAnim } : { opacity: 1 }
+            ]} />
+
+            {/* Escudo de Verificado en la Foto */}
+            {item.user?.isVerified && (
+              <View style={styles.verifiedBadgeRemate}>
+                <Ionicons name="shield-checkmark" size={8} color="#FFF" />
+              </View>
+            )}
+          </TouchableOpacity>
+
           <View>
-            <Text style={styles.sellerName}>@{item.user?.username}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={styles.sellerName}>@{item.user?.username}</Text>
+              {/* Escudo junto al Nombre */}
+              {item.user?.isVerified && (
+                <Ionicons name="shield-checkmark" size={14} color="#1DA1F2" style={{ marginLeft: 4 }} />
+              )}
+            </View>
             <Text style={styles.locationTag}>📍 {item.user?.city || item.user?.province || 'San Rafael, Mendoza'}</Text>
           </View>
         </View>
@@ -467,6 +505,14 @@ const styles = StyleSheet.create({
   sellerInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   // 👇 Nuevo estilo para la foto real
   avatarImage: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: COLORS.accent, marginRight: 8 },
+  onlineDotRemate: {
+    position: 'absolute', top: 0, right: 0, width: 10, height: 10, borderRadius: 5,
+    borderWidth: 1.5, borderColor: '#000', zIndex: 10,
+  },
+  verifiedBadgeRemate: {
+    position: 'absolute', bottom: -2, right: -2, backgroundColor: '#1DA1F2',
+    borderRadius: 6, padding: 1, borderWidth: 1, borderColor: '#000', zIndex: 2,
+  },
   sellerName: { color: '#FFF', fontWeight: 'bold', fontSize: 14, marginRight: 10 },
   locationTag: { color: '#AAA', fontSize: 12 },
   
