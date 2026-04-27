@@ -1,6 +1,6 @@
 // frontend/src/screens/SingleVideoScreen.tsx
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, Dimensions, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Share, Alert, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image, Dimensions, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Share, Alert, useWindowDimensions, ScrollView } from 'react-native';
 import { useIsFocused } from '@react-navigation/native'; 
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,38 @@ import { useCurrency } from '../context/CurrencyContext';
 import { formatCurrency } from '../utils/formatters';
 
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
+
+const REPORT_REASONS = [
+  { id: 'fraude', label: 'Fraude, estafa o bienes falsos', icon: 'warning-outline', color: '#FF9500' },
+  { id: 'sexual', label: 'Contenido sexual o desnudez', icon: 'body-outline', color: '#FF2D55' },
+  { id: 'acoso', label: 'Acoso o incitación al odio', icon: 'hand-left-outline', color: '#FF3B30' },
+  { id: 'spam', label: 'Spam o información engañosa', icon: 'megaphone-outline', color: '#5856D6' },
+  { id: 'falso', label: 'Suplantación de identidad', icon: 'person-remove-outline', color: '#8E8E93' },
+  { id: 'violencia', label: 'Violencia o actividades peligrosas', icon: 'skull-outline', color: '#FFF' }
+];
+
+const handleSendReport = async (targetId: string, type: 'VIDEO' | 'PROFILE', reason: string) => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        Alert.alert("Atención", "Debes iniciar sesión para reportar contenido.");
+        return;
+      }
+      
+      // Enviamos al backend
+      await axios.post(`${BACKEND_URL}/videos/report`, // Ajusta la ruta según dónde la pongas
+        { targetId, type, reason },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      Alert.alert(
+        "Denuncia recibida", 
+        "Gracias por ayudarnos a mantener segura la comunidad. Nuestro equipo lo revisará en menos de 24hs."
+      );
+    } catch (error) {
+      Alert.alert("Error", "No se pudo enviar el reporte. Intenta más tarde.");
+    }
+  };
 
 // =====================================================================
 // 1. EL COMPONENTE DE VIDEO (Con Likes y Comentarios 100% funcionales)
@@ -294,6 +326,9 @@ export default function SingleVideoScreen({ route, navigation }: any) {
   const [isGlobalMuted, setIsGlobalMuted] = useState(false);
   const isFocused = useIsFocused();
 
+  const [optionsModalVisible, setOptionsModalVisible] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+
   const { width } = useWindowDimensions();
   const [containerHeight, setContainerHeight] = useState(0);
 
@@ -315,7 +350,9 @@ export default function SingleVideoScreen({ route, navigation }: any) {
         <Ionicons name="chevron-back" size={28} color="#FFF" />
       </TouchableOpacity>
 
-      
+      <TouchableOpacity style={[styles.optionsButton, { top: Math.max(insets.top, 20) }]} onPress={() => setOptionsModalVisible(true)}>
+        <Ionicons name="ellipsis-vertical" size={24} color="#FFF" />
+      </TouchableOpacity>
 
       {containerHeight > 0 && (
         <FlatList
@@ -348,6 +385,65 @@ export default function SingleVideoScreen({ route, navigation }: any) {
           viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
         />
       )}
+
+      {/* ========================================== */}
+      {/* 👇 MODAL 1: OPCIONES (LOS 3 PUNTITOS) 👇 */}
+      {/* ========================================== */}
+      <Modal visible={optionsModalVisible} transparent={true} animationType="slide" onRequestClose={() => setOptionsModalVisible(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setOptionsModalVisible(false)}>
+          <View style={styles.bottomSheetOptions}>
+            <View style={styles.bottomSheetHandle} />
+            
+            <TouchableOpacity style={styles.optionItem} onPress={() => { setOptionsModalVisible(false); Alert.alert('Calidad de video', 'La calidad está en Automático (HD) para optimizar tus datos.'); }}>
+              <Ionicons name="options-outline" size={24} color="#FFF" />
+              <Text style={styles.optionText}>Calidad del video</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.optionItem} onPress={() => { 
+              setOptionsModalVisible(false); 
+              setReportModalVisible(true); // 👈 ESTO ABRE EL SEGUNDO PANEL
+            }}>
+              <Ionicons name="flag-outline" size={24} color="#FF2D55" />
+              <Text style={[styles.optionText, { color: '#FF2D55' }]}>Denunciar video</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ========================================== */}
+      {/* 👇 MODAL 2: DENUNCIA PROFESIONAL 👇 */}
+      {/* ========================================== */}
+      <Modal visible={reportModalVisible} transparent={true} animationType="slide">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setReportModalVisible(false)}>
+          <View style={[styles.bottomSheetOptions, { minHeight: 450, paddingBottom: 30 }]}>
+            <View style={styles.bottomSheetHandle} />
+            <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold', marginBottom: 5, textAlign: 'center' }}>Reportar contenido</Text>
+            <Text style={{ color: '#888', fontSize: 13, textAlign: 'center', marginBottom: 20 }}>Tu denuncia es anónima. Si alguien está en peligro físico inminente, contacta a la policía local de inmediato.</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {REPORT_REASONS.map((reason) => (
+                <TouchableOpacity key={reason.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 0.5, borderBottomColor: '#222' }}
+                  onPress={() => {
+                    setReportModalVisible(false);
+                    handleSendReport("TARGET_ID", "VIDEO", reason.label); 
+                  }}
+                >
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center', marginRight: 15 }}>
+                    <Ionicons name={reason.icon as any} size={18} color={reason.color} />
+                  </View>
+                  <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '500', flex: 1 }}>{reason.label}</Text>
+                  <Ionicons name="chevron-forward" size={18} color="#555" />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity style={{ marginTop: 20, backgroundColor: '#222', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }} onPress={() => setReportModalVisible(false)}>
+              <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </View>
   );
 }
@@ -429,4 +525,11 @@ const styles = StyleSheet.create({
   inputContainer: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#333', paddingTop: 15, paddingBottom: 10, marginTop: 10 },
   commentInput: { flex: 1, backgroundColor: COLORS.background, color: COLORS.text, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, marginRight: 10 },
   sendButton: { padding: 10 },
+
+  optionsButton: { position: 'absolute', right: 20, zIndex: 100, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 8, paddingVertical: 10, borderRadius: 20 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  bottomSheetOptions: { backgroundColor: COLORS.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 },
+  bottomSheetHandle: { width: 40, height: 4, backgroundColor: '#555', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  optionItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 0.5, borderBottomColor: '#333' },
+  optionText: { color: '#FFF', fontSize: 16, marginLeft: 15, fontWeight: '500' }
 });

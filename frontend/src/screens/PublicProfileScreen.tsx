@@ -16,6 +16,38 @@ const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width / 3;
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
+const REPORT_REASONS = [
+  { id: 'fraude', label: 'Fraude, estafa o bienes falsos', icon: 'warning-outline', color: '#FF9500' },
+  { id: 'sexual', label: 'Contenido sexual o desnudez', icon: 'body-outline', color: '#FF2D55' },
+  { id: 'acoso', label: 'Acoso o incitación al odio', icon: 'hand-left-outline', color: '#FF3B30' },
+  { id: 'spam', label: 'Spam o información engañosa', icon: 'megaphone-outline', color: '#5856D6' },
+  { id: 'falso', label: 'Suplantación de identidad', icon: 'person-remove-outline', color: '#8E8E93' },
+  { id: 'violencia', label: 'Violencia o actividades peligrosas', icon: 'skull-outline', color: '#FFF' }
+];
+
+const handleSendReport = async (targetId: string, type: 'VIDEO' | 'PROFILE', reason: string) => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        Alert.alert("Atención", "Debes iniciar sesión para reportar contenido.");
+        return;
+      }
+      
+      // Enviamos al backend
+      await axios.post(`${BACKEND_URL}/videos/report`, // Ajusta la ruta según dónde la pongas
+        { targetId, type, reason },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      Alert.alert(
+        "Denuncia recibida", 
+        "Gracias por ayudarnos a mantener segura la comunidad. Nuestro equipo lo revisará en menos de 24hs."
+      );
+    } catch (error) {
+      Alert.alert("Error", "No se pudo enviar el reporte. Intenta más tarde.");
+    }
+  };
+
 export default function PublicProfileScreen({ route, navigation }: any) {
   const { userId } = route.params;
   const insets = useSafeAreaInsets();
@@ -286,7 +318,7 @@ export default function PublicProfileScreen({ route, navigation }: any) {
                 // 👇 INYECTAMOS LOS DATOS DEL VENDEDOR 👇
                 const videosConUsuario = (profile?.videos || []).map((v: any) => ({
                   ...v,
-                  user: { username: profile?.username, avatarUrl: profile?.avatarUrl }
+                  user: { username: profile?.username, avatarUrl: profile?.avatarUrl, isVerified: profile?.isVerified, isOnline: profile?.isOnline}
                 }));
                 navigation.navigate('SingleVideo', { videos: videosConUsuario, initialIndex: index });
               }}
@@ -318,29 +350,38 @@ export default function PublicProfileScreen({ route, navigation }: any) {
         />
         
         {/* MODAL DE REPORTE */}
-        <Modal visible={reportModalVisible} transparent={true} animationType="fade">
-          <TouchableOpacity 
-            style={styles.modalOverlay} 
-            activeOpacity={1} 
-            onPress={() => setReportModalVisible(false)}
-          >
-            <View style={styles.bottomSheetReport}>
+        {/* ========================================== */}
+        {/* 👇 MODAL DE DENUNCIA PROFESIONAL 👇 */}
+        {/* ========================================== */}
+        <Modal visible={reportModalVisible} transparent={true} animationType="slide">
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setReportModalVisible(false)}>
+            <View style={[styles.bottomSheetReport, { minHeight: 450, paddingBottom: 30 }]}>
               <View style={styles.bottomSheetHandle} />
-              <TouchableOpacity 
-                style={styles.reportItem}
-                onPress={() => {
-                  setReportModalVisible(false);
-                  Alert.alert("Denuncia recibida", "Gracias por informarnos. Revisaremos este perfil a la brevedad.");
-                }}
-              >
-                <Ionicons name="flag-outline" size={22} color="#FF2D55" />
-                <Text style={styles.reportItemText}>Denunciar perfil</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.reportItem, { borderBottomWidth: 0 }]}
-                onPress={() => setReportModalVisible(false)}
-              >
-                <Text style={{ color: COLORS.textMuted, fontSize: 16 }}>Cancelar</Text>
+              <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold', marginBottom: 5, textAlign: 'center' }}>Reportar Perfil</Text>
+              <Text style={{ color: '#888', fontSize: 13, textAlign: 'center', marginBottom: 20 }}>Tu denuncia es anónima.</Text>
+
+              <FlatList 
+                data={REPORT_REASONS}
+                keyExtractor={item => item.id}
+                showsVerticalScrollIndicator={false}
+                renderItem={({item: reason}) => (
+                  <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 0.5, borderBottomColor: '#222' }}
+                    onPress={() => {
+                      setReportModalVisible(false);
+                      handleSendReport(profile?.id, "PROFILE", reason.label); // 👈 ENVÍA EL REPORTE AL BACKEND
+                    }}
+                  >
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center', marginRight: 15 }}>
+                      <Ionicons name={reason.icon as any} size={18} color={reason.color} />
+                    </View>
+                    <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '500', flex: 1 }}>{reason.label}</Text>
+                    <Ionicons name="chevron-forward" size={18} color="#555" />
+                  </TouchableOpacity>
+                )}
+              />
+
+              <TouchableOpacity style={{ marginTop: 20, backgroundColor: '#222', paddingVertical: 14, borderRadius: 12, alignItems: 'center' }} onPress={() => setReportModalVisible(false)}>
+                <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Cancelar</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>

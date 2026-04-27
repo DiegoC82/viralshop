@@ -1,18 +1,30 @@
 // frontend/src/screens/PreLoadScreen.tsx
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import axios from 'axios'; // 👈 IMPORTAMOS AXIOS
 import { COLORS } from '../theme/colors';
+
+const BACKEND_URL = 'https://viralshop-xr9v.onrender.com'; // 👈 URL DE TU BACKEND
 
 export default function PreLoadScreen({ navigation }: any) {
   useEffect(() => {
     const fetchInitialData = async () => {
-      // Aquí es donde en el futuro haremos el 'fetch' de los videos de Prisma.
-      // Por ahora, simulamos 2.5 segundos de carga de datos.
-      await new Promise(resolve => setTimeout(resolve, 9500));
-      
-      // Una vez que los datos "cargaron", entramos a la app usando 'replace' 
-      // para que el usuario no pueda volver atrás a esta pantalla cargando.
-      navigation.replace('MainTabs');
+      try {
+        // 1. Petición real para DESPERTAR a Render y pre-cargar los videos en caché
+        const requestPromise = axios.get(`${BACKEND_URL}/videos/feed`);
+        
+        // 2. Tiempo mínimo de 1.5 segundos para que la animación se vea fluida y no parpadee
+        const minDelayPromise = new Promise(resolve => setTimeout(resolve, 1500));
+
+        // Esperamos a que el servidor responda Y que pase el tiempo mínimo
+        await Promise.all([requestPromise, minDelayPromise]);
+
+      } catch (error) {
+        console.log("Error conectando con el servidor:", error);
+      } finally {
+        // Una vez que el servidor está listo (despierto y con datos), entramos a la app
+        navigation.replace('MainTabs');
+      }
     };
 
     fetchInitialData();
@@ -35,7 +47,7 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginBottom: 20,
-    transform: [{ scale: 1.5 }] // Hace el circulito un poco más grande
+    transform: [{ scale: 1.5 }] 
   },
   subtitle: {
     fontSize: 16,

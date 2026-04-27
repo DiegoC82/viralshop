@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation, useIsFocused } from '@react-navigation/native';
 import { useVideoPlayer, VideoView } from 'expo-video'; // 👈 ¡NUEVO!
+import { TouchableWithoutFeedback } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useCurrency } from '../context/CurrencyContext';
@@ -18,28 +19,9 @@ import { COLORS } from '../theme/colors';
 
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
-export default function RemateScreen() {
-  const insets = useSafeAreaInsets();
-  const navigation = useNavigation<any>();
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  const { width, height } = useWindowDimensions();
-  const [feedHeight, setFeedHeight] = useState(Dimensions.get('window').height);
-
-  const { currency, exchangeRate } = useCurrency();
-  
-  const [auctions, setAuctions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const isFocused = useIsFocused();
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isMuted, setIsMuted] = useState(false); // 👈 NUEVO: Estado de audio global
-
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
-  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index);
-  }).current;
-
-   // 👇 0. TEMPORIZADOR: Corregido para asegurar visibilidad 👇
+// =====================================================================
+// 👇 1. SACAMOS EL RELOJ AFUERA (Independiente) 👇
+// =====================================================================
 const TimerBadge = React.memo(({ endDate, insetsTop }: { endDate: string, insetsTop: number }) => {
   const [timeLeft, setTimeLeft] = useState('00:00:00');
 
@@ -68,11 +50,16 @@ const TimerBadge = React.memo(({ endDate, insetsTop }: { endDate: string, insets
   );
 });
 
-// 👇 1. ITEM DE REMATE: Con Chat de Subasta agregado 👇
+// =====================================================================
+// 👇 2. SACAMOS EL VIDEO AFUERA (Independiente) 👇
+// =====================================================================
 const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim, handleQuickBid, shareAuction, insetsTop, width, height }: any) => {
-  const navigation = useNavigation<any>(); // 👈 Necesario para ir a perfiles desde los comentarios
+  const navigation = useNavigation<any>(); 
+  const { currency, exchangeRate } = useCurrency(); // 👈 CLAVE: Agregamos el llamado a la moneda aquí adentro
+
   const topBidder = item.bids && item.bids.length > 0 ? item.bids[0].user.username : 'Sé el primero';
   const blinkAnim = useRef(new Animated.Value(0.3)).current;
+  
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -81,6 +68,7 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
       ])
     ).start();
   }, []);
+
   const totalBids = item.bids ? item.bids.length : 0;
   const isHot = totalBids > 3;
 
@@ -89,18 +77,10 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
     player.muted = isMuted;
   });
 
-  useEffect(() => {
-    player.muted = isMuted;
-  }, [isMuted, player]);
+  useEffect(() => { player.muted = isMuted; }, [isMuted, player]);
+  useEffect(() => { if (isActive) player.play(); else player.pause(); }, [isActive, player]);
 
-  useEffect(() => {
-    if (isActive) player.play();
-    else player.pause();
-  }, [isActive, player]);
-
-  // ==========================================
-  // 👇 LÓGICA DE COMENTARIOS (CHAT) 👇
-  // ==========================================
+  // CHAT DEL REMATE
   const [showComments, setShowComments] = useState(false);
   const [commentsCount, setCommentsCount] = useState(0); 
   const [comments, setComments] = useState<any[]>([]);
@@ -113,7 +93,7 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
     try {
       const response = await axios.get(`${BACKEND_URL}/videos/${item.id}/comments`);
       const loadedComments = response.data || [];
-      setComments(loadedComments.reverse()); // Los más nuevos abajo/arriba
+      setComments(loadedComments.reverse()); 
       setCommentsCount(loadedComments.length);
     } catch (error) {
       console.log("Error al cargar comentarios", error);
@@ -147,35 +127,31 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
     navigation.navigate('PublicProfile', { userId: userIdToNavigate });
   };
 
+  const toggleMute = () => setIsMuted(!isMuted);
+
   return (
     <View style={[styles.auctionContainer, { width, height }]}>
-      <VideoView player={player} style={StyleSheet.absoluteFillObject} contentFit="cover" nativeControls={false} />
-      <LinearGradient colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.8)']} style={StyleSheet.absoluteFillObject} />
+      
+      {/* 👇 4. TAP-TO-MUTE (Modo Feed) 👇 */}
+      <TouchableWithoutFeedback onPress={toggleMute}>
+        <View style={StyleSheet.absoluteFillObject}>
+          <VideoView player={player} style={StyleSheet.absoluteFillObject} contentFit="cover" nativeControls={false} />
+          <LinearGradient colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.8)']} style={StyleSheet.absoluteFillObject} />
+        </View>
+      </TouchableWithoutFeedback>
 
       <TimerBadge endDate={item.auctionEndsAt} insetsTop={insetsTop} />
 
       <View style={styles.contentBottom}>
         <View style={styles.sellerInfo}>
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('PublicProfile', { userId: item.userId })}
-            style={{ position: 'relative', marginRight: 10 }}
-          >
-            <Image 
-              source={{ uri: item.user?.avatarUrl || `https://i.pravatar.cc/150?u=${item.userId}` }} 
-              style={[styles.avatarImage, item.user?.isVerified && { borderColor: '#1DA1F2' }]} 
-            />
-            
-            {/* Punto de Conexión (Rosado/Violeta Accent) */}
-            <Animated.View style={[
-              styles.onlineDotRemate,
-              { backgroundColor: item.user?.isOnline ? COLORS.accent : '#888888' },
-              item.user?.isOnline ? { opacity: blinkAnim } : { opacity: 1 }
-            ]} />
-
-            {/* Escudo de Verificado en la Foto */}
+          
+          {/* 👇 2. FOTO Y ESCUDOS ACOMODADOS 👇 */}
+          <TouchableOpacity onPress={() => navigation.navigate('PublicProfile', { userId: item.userId })} style={{ position: 'relative', marginRight: 15 }}>
+            <Image source={{ uri: item.user?.avatarUrl || `https://i.pravatar.cc/150?u=${item.userId}` }} style={[styles.avatarImage, item.user?.isVerified && { borderColor: '#1DA1F2' }]} />
+            <Animated.View style={[styles.onlineDotRemate, { backgroundColor: item.user?.isOnline ? COLORS.accent : '#888888' }, item.user?.isOnline ? { opacity: blinkAnim } : { opacity: 1 }]} />
             {item.user?.isVerified && (
               <View style={styles.verifiedBadgeRemate}>
-                <Ionicons name="shield-checkmark" size={8} color="#FFF" />
+                <Ionicons name="shield-checkmark" size={10} color="#FFF" />
               </View>
             )}
           </TouchableOpacity>
@@ -183,10 +159,7 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
           <View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={styles.sellerName}>@{item.user?.username}</Text>
-              {/* Escudo junto al Nombre */}
-              {item.user?.isVerified && (
-                <Ionicons name="shield-checkmark" size={14} color="#1DA1F2" style={{ marginLeft: 4 }} />
-              )}
+              {item.user?.isVerified && <Ionicons name="shield-checkmark" size={14} color="#1DA1F2" style={{ marginLeft: 4 }} />}
             </View>
             <Text style={styles.locationTag}>📍 {item.user?.city || item.user?.province || 'San Rafael, Mendoza'}</Text>
           </View>
@@ -195,70 +168,56 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
         <Text style={styles.productTitle}>{item.productName}</Text>
 
         <View style={[styles.biddingCard, { backgroundColor: 'rgba(20, 20, 20, 0.55)' }]}>
-          <Text style={styles.biddingSubtitle}>Puja más alta ({totalBids} ofertas):</Text>
-          <View style={styles.priceRow}>
-            <Animated.Text style={[styles.currentPrice, { transform: [{ scale: pulseAnim }] }]}>
-              {formatCurrency(item.productPrice, currency, exchangeRate)}
-            </Animated.Text>
+          
+          {/* 👇 3. "SÉ EL PRIMERO" SUBIDO A LA MISMA LÍNEA DEL SUBTÍTULO 👇 */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+            <Text style={styles.biddingSubtitle}>Puja + alta ({totalBids} Pujas):</Text>
             <View style={styles.topBidderBadge}>
               <Ionicons name="trophy" size={12} color="#FFD700" />
               <Text style={styles.topBidderText}> {topBidder}</Text>
             </View>
           </View>
 
+          <View style={styles.priceRow}>
+            <Animated.Text style={[styles.currentPrice, { transform: [{ scale: pulseAnim }] }]}>
+              {formatCurrency(item.productPrice, currency, exchangeRate)}
+            </Animated.Text>
+          </View>
+
           <View style={styles.quickBidsRow}>
-            <TouchableOpacity style={styles.quickBidBtn} onPress={() => handleQuickBid(item.id, 5000, item.productPrice)}>
-              <Text style={styles.quickBidBtnText}>+ $5k</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickBidBtn} onPress={() => handleQuickBid(item.id, 10000, item.productPrice)}>
-              <Text style={styles.quickBidBtnText}>+ $10k</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.quickBidBtnPro} onPress={() => handleQuickBid(item.id, 25000, item.productPrice)}>
-              <Text style={styles.quickBidBtnProText}>+ $25k</Text>
-            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickBidBtn} onPress={() => handleQuickBid(item.id, 5000, item.productPrice)}><Text style={styles.quickBidBtnText}>+ $5k</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.quickBidBtn} onPress={() => handleQuickBid(item.id, 10000, item.productPrice)}><Text style={styles.quickBidBtnText}>+ $10k</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.quickBidBtnPro} onPress={() => handleQuickBid(item.id, 25000, item.productPrice)}><Text style={styles.quickBidBtnProText}>+ $25k</Text></TouchableOpacity>
           </View>
         </View>
       </View>
 
       <View style={styles.sideButtons}>
-        {/* 1. Mute */}
-        <TouchableOpacity style={styles.sideBtn} onPress={() => setIsMuted(!isMuted)}>
-          <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={30} color={isMuted ? COLORS.accent : "#FFF"} />
-          <Text style={styles.sideBtnText}>{isMuted ? 'Mudo' : 'Audio'}</Text>
-        </TouchableOpacity>
-
-        {/* 👇 2. NUEVO BOTÓN DE COMENTARIOS/CHAT 👇 */}
+        {/* 👇 ICONO MUTE APARECE SOLO CUANDO ESTÁ SILENCIADO (Igual al feed) 👇 */}
+        {isMuted && (
+          <TouchableOpacity style={[styles.sideBtn, { marginBottom: 15 }]} onPress={toggleMute}>
+            <Ionicons name="volume-mute" size={32} color="rgba(255,255,255,0.8)" />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.sideBtn} onPress={openComments}>
           <Ionicons name="chatbubble-ellipses" size={28} color="#FFF" />
           <Text style={styles.sideBtnText}>{commentsCount > 0 ? commentsCount : 'Chat'}</Text>
         </TouchableOpacity>
-
-        {/* 3. Fuego (Hot) */}
         <View style={styles.sideBtn}>
           <Animated.View style={isHot ? { transform: [{ scale: pulseAnim }] } : {}}>
             <Ionicons name={isHot ? "flame" : "flame-outline"} size={32} color={isHot ? "#FF4500" : "#FFF"} />
           </Animated.View>
-          <Text style={[styles.sideBtnText, isHot && { color: '#FF4500', fontWeight: 'bold' }]}>
-            {isHot ? '¡Ardiente!' : 'Nuevo'}
-          </Text>
+          <Text style={[styles.sideBtnText, isHot && { color: '#FF4500', fontWeight: 'bold' }]}>{isHot ? '¡Ardiente!' : 'Nuevo'}</Text>
         </View>
-
-        {/* 4. Compartir */}
         <TouchableOpacity style={styles.sideBtn} onPress={() => shareAuction(item)}>
           <Ionicons name="share-social" size={28} color="#FFF" />
           <Text style={styles.sideBtnText}>Compartir</Text>
         </TouchableOpacity>
       </View>
 
-      {/* ========================================== */}
-      {/* 👇 MODAL DESPLEGABLE DE COMENTARIOS 👇 */}
-      {/* ========================================== */}
+      {/* MODAL DE CHAT */}
       <Modal visible={showComments} animationType="slide" transparent={true} onRequestClose={() => setShowComments(false)}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : undefined} 
-          keyboardVerticalOffset={Platform.OS === "android" ? 20 : 0}
-          style={styles.modalContainer}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={Platform.OS === "android" ? 20 : 0} style={styles.modalContainer}>
           <View style={[styles.bottomSheet, { height: height * 0.55, paddingBottom: Math.max(insetsTop, 15) }]}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Chat del Remate</Text>
@@ -291,13 +250,7 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
             )}
 
             <View style={styles.inputContainer}>
-              <TextInput 
-                style={styles.commentInput} 
-                placeholder="Escribe en el chat..." 
-                placeholderTextColor="#888"
-                value={newComment}
-                onChangeText={setNewComment}
-              />
+              <TextInput style={styles.commentInput} placeholder="Escribe en el chat..." placeholderTextColor="#888" value={newComment} onChangeText={setNewComment} />
               <TouchableOpacity style={styles.sendButton} onPress={postComment}>
                 <Ionicons name="send" size={20} color={newComment.trim() ? COLORS.accent : "#555"} />
               </TouchableOpacity>
@@ -308,6 +261,30 @@ const RemateItem = React.memo(({ item, isActive, isMuted, setIsMuted, pulseAnim,
     </View>
   );
 });
+
+// =====================================================================
+// 👇 3. RECIÉN AQUÍ ARRANCA LA PANTALLA (Limpia y estable) 👇
+// =====================================================================
+export default function RemateScreen() {
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const { width, height } = useWindowDimensions();
+  const [feedHeight, setFeedHeight] = useState(Dimensions.get('window').height);
+
+  const { currency, exchangeRate } = useCurrency();
+  
+  const [auctions, setAuctions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const isFocused = useIsFocused();
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index);
+  }).current;
 
   useEffect(() => {
     Animated.loop(
@@ -500,18 +477,18 @@ const styles = StyleSheet.create({
   timerBadge: { position: 'absolute', alignSelf: 'center', backgroundColor: 'rgba(255, 45, 85, 0.9)', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#FFF' },
   timerText: { color: '#FFF', fontWeight: 'bold', fontSize: 16, marginLeft: 8, letterSpacing: 1 },
 
-  contentBottom: { position: 'absolute', bottom: 60, left: 15, right: 70 },
+  contentBottom: { position: 'absolute', bottom: 80, left: 15, right: 70 },
   
   sellerInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   // 👇 Nuevo estilo para la foto real
-  avatarImage: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: COLORS.accent, marginRight: 8 },
+  avatarImage: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: COLORS.accent },
   onlineDotRemate: {
-    position: 'absolute', top: 0, right: 0, width: 10, height: 10, borderRadius: 5,
-    borderWidth: 1.5, borderColor: '#000', zIndex: 10,
+    position: 'absolute', top: 0, right: 0, width: 14, height: 14, borderRadius: 7,
+    borderWidth: 2, borderColor: '#000', zIndex: 10,
   },
   verifiedBadgeRemate: {
-    position: 'absolute', bottom: -2, right: -2, backgroundColor: '#1DA1F2',
-    borderRadius: 6, padding: 1, borderWidth: 1, borderColor: '#000', zIndex: 2,
+    position: 'absolute', bottom: -2, right: -4, backgroundColor: '#1DA1F2',
+    borderRadius: 10, padding: 2, borderWidth: 1.5, borderColor: '#000', zIndex: 2,
   },
   sellerName: { color: '#FFF', fontWeight: 'bold', fontSize: 14, marginRight: 10 },
   locationTag: { color: '#AAA', fontSize: 12 },
@@ -519,11 +496,10 @@ const styles = StyleSheet.create({
   productTitle: { color: '#FFF', fontSize: 24, fontWeight: '900', marginBottom: 15, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
 
   biddingCard: { backgroundColor: 'rgba(30, 30, 30, 0.85)', borderRadius: 16, padding: 15, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)' },
-  biddingSubtitle: { color: '#CCC', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 },
-  
-  priceRow: { flexDirection: 'row', alignItems: 'flex-end', marginVertical: 10, justifyContent: 'space-between' },
+ biddingSubtitle: { color: '#CCC', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  priceRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 15 }, // <-- Ajustado
   currentPrice: { color: COLORS.accent, fontSize: 38, fontWeight: 'bold' },
-  topBidderBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, marginBottom: 5 },
+  topBidderBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
   topBidderText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
 
   quickBidLabel: { color: '#AAA', fontSize: 12, marginTop: 10, marginBottom: 8 },
