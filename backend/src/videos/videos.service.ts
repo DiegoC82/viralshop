@@ -211,7 +211,7 @@ export class VideosService {
   }
 
   async getActiveAuctions() {
-    return this.prisma.video.findMany({
+    const auctions = await this.prisma.video.findMany({
       where: {
         isAuction: true,
         is18Plus: false,
@@ -222,6 +222,18 @@ export class VideosService {
         bids: { include: { user: true }, orderBy: { amount: 'desc' } }
       },
       orderBy: { auctionEndsAt: 'asc' }
+    });
+
+    // 👇 AQUÍ ESTÁ LA MAGIA: Convertimos la fecha en un Sí/No para el puntito 👇
+    return auctions.map(auction => {
+      const isOnline = auction.user.lastActive 
+        ? (new Date().getTime() - new Date(auction.user.lastActive).getTime()) < 300000 
+        : false;
+
+      return {
+        ...auction,
+        user: { ...auction.user, isOnline } 
+      };
     });
   }
 
