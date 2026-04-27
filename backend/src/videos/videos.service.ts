@@ -164,16 +164,27 @@ export class VideosService {
       whereClause.longitude = { gte: lngNum - degreeRadius, lte: lngNum + degreeRadius };
     }
 
-    return this.prisma.video.findMany({
+    const videos = await this.prisma.video.findMany({
       where: whereClause,
       include: { 
         user: true,
-        // 👇 1. AGREGAR ESTO PARA EL BUSCADOR 👇
+        // 👇 ESTO ES CLAVE PARA QUE AL ABRIR EL VIDEO SE VEAN LOS LIKES Y COMENTARIOS 👇
         _count: {
           select: { likes: true, comments: true }
         }
       },
       orderBy: { createdAt: 'desc' }
+    });
+
+    return videos.map(video => {
+      const isOnline = video.user?.lastActive 
+        ? (new Date().getTime() - new Date(video.user.lastActive).getTime()) < 300000 
+        : false;
+
+      return {
+        ...video,
+        user: { ...video.user, isOnline } 
+      };
     });
   }
 
