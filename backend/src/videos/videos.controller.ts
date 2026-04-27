@@ -209,4 +209,21 @@ async setThumbnail(@Param('id') videoId: string, @Body('time') time: number, @Re
     const userId = req.user.sub;
     return this.videosService.placeBid(videoId, userId, amount);
   }
+
+  // 👇 NUEVO: Ruta para recibir denuncias (Corregida)
+  @UseGuards(JwtAuthGuard)
+  @Post('report')
+  async createReport(
+    @Request() req: any, 
+    @Body('targetId') targetId: string, 
+    @Body('type') type: string, 
+    @Body('reason') reason: string
+  ) {
+    const reporterId = req.user.sub;
+    
+    // Le pasamos el trabajo al Servicio (en vez de llamar a Prisma directamente)
+    await this.videosService.createReport(reporterId, targetId, type, reason);
+
+    return { message: 'Denuncia registrada exitosamente.' };
+  }
 }

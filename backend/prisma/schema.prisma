@@ -38,6 +38,7 @@ model User {
   bids      Bid[]     @relation("UserBids")
   followers Follows[] @relation("following")
   following Follows[] @relation("follower")
+  reportsMade Report[] @relation("UserReports")
 }
 
 // Para que el usuario elija qué le gusta al iniciar
@@ -160,4 +161,16 @@ model Follows {
   follower    User @relation("follower", fields: [followerId], references: [id])
   following   User @relation("following", fields: [followingId], references: [id])
   @@id([followerId, followingId])
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  reporterId  String   // Quién hace la denuncia
+  targetId    String   // ID del video o del perfil denunciado
+  type        String   // Puede ser "VIDEO" o "PROFILE"
+  reason      String   // El motivo profesional que eligió
+  status      String   @default("PENDING") // PENDING, REVIEWED, RESOLVED
+  createdAt   DateTime @default(now())
+
+  reporter    User     @relation("UserReports", fields: [reporterId], references: [id])
 }

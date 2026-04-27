@@ -277,6 +277,13 @@ export class VideosService {
       data: { discountPrice } // Guarda el precio de oferta
     });
   }
+
+  // 👇 NUEVO: Servicio para crear denuncias
+  async createReport(reporterId: string, targetId: string, type: string, reason: string) {
+    return this.prisma.report.create({
+      data: { reporterId, targetId, type, reason }
+    });
+  }
   
   // ==========================================
   // Borrar videos (solo para el dueño del video o admin)
