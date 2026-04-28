@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, Post, Param, Req, UseGuards, Request, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Post, Param, Req, UseGuards, Request, UseInterceptors, UploadedFile, BadRequestException, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer'; // 👇 Cambiamos diskStorage por memoryStorage
 import { UsersService } from './users.service';
@@ -42,6 +42,12 @@ export class UsersController {
     await this.usersService.updateAvatar(userId, avatarUrl);
     
     return { message: 'Foto de perfil actualizada', avatarUrl };
+  }
+
+  // 👇 NUEVA RUTA: Buscar Usuarios 👇
+  @Get('search')
+  searchUsers(@Query('q') query: string) {
+    return this.usersService.searchUsers(query);
   }
 
   @Patch('ping')

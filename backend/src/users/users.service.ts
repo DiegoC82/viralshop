@@ -85,6 +85,28 @@ export class UsersService {
     };
   }
 
+  // 👇 BUSCADOR GLOBAL DE USUARIOS 👇
+  async searchUsers(query: string) {
+    if (!query || query.trim() === '') return [];
+    
+    return this.prisma.user.findMany({
+      where: {
+        OR: [
+          { username: { contains: query, mode: 'insensitive' } },
+          { name: { contains: query, mode: 'insensitive' } }
+        ]
+      },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        avatarUrl: true,
+        isVerified: true
+      },
+      take: 10 // Limitamos a 10 resultados para que sea súper rápido
+    });
+  }
+
   // 👇 Trae el perfil público de un usuario y verifica si lo estamos siguiendo
   async getPublicProfile(targetUserId: string, currentUserId?: string) {
     const user = await this.prisma.user.findUnique({
