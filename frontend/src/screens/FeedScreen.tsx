@@ -1,11 +1,13 @@
 // frontend/src/screens/FeedScreen.tsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import Constants from 'expo-constants';
 import { StyleSheet, Text, View, FlatList, Dimensions, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Alert, Share, Modal, TextInput, KeyboardAvoidingView, Platform, Animated, useWindowDimensions, ScrollView } from 'react-native'; //
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { useFocusEffect, useNavigation, useIsFocused } from '@react-navigation/native'; 
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import { COLORS } from '../theme/colors';
 import { TouchableWithoutFeedback } from 'react-native';
@@ -63,23 +65,38 @@ Notifications.setNotificationHandler({
 async function registerForPushNotificationsAsync() {
   let token;
 
+  // 1. Verificamos si es un celular real
   if (Device.isDevice) {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
+    // 2. Si no tenemos permiso, mostramos el cartel
     if (existingStatus !== 'granted') {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
 
+    // 3. Si el usuario dijo que NO
     if (finalStatus !== 'granted') {
-      console.log('Fallo al obtener el token para notificaciones push');
+      Alert.alert(
+        'Notificaciones desactivadas', 
+        'Ve a los ajustes de tu celular para activar las notificaciones y no perderte ninguna venta.'
+      );
       return;
     }
 
-    token = (await Notifications.getExpoPushTokenAsync()).data;
-
+    // 4. Intentamos obtener el Token (Con manejo de errores)
     try {
+      // Expo nuevo requiere el projectId
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+      
+      token = (await Notifications.getExpoPushTokenAsync({
+        projectId: projectId, // Si no usas EAS aún, esto evitará que crashee
+      })).data;
+
+      // ¡Avisamos por pantalla que funcionó! (Puedes borrar este Alert cuando ya funcione)
+      // Alert.alert("¡Token Obtenido!", "El celular está listo para recibir Push.");
+
       const userToken = await AsyncStorage.getItem('userToken');
       if (userToken) {
         await axios.patch(`${BASE_URL}/users/update-push-token`, 
@@ -88,10 +105,15 @@ async function registerForPushNotificationsAsync() {
         );
       }
     } catch (error) {
-      console.error("Error guardando el token en el servidor:", error);
+      console.error("Error obteniendo el token de Expo:", error);
+      Alert.alert("Error de Expo", "Hubo un problema al generar el token de notificaciones.");
     }
+  } else {
+    // Si estás en la PC, te avisa en lugar de fallar en silencio
+    Alert.alert('Emulador detectado', 'Las notificaciones Push solo funcionan en un celular físico.');
   }
 
+  // 5. Configuración específica para Android
   if (Platform.OS === 'android') {
     Notifications.setNotificationChannelAsync('default', {
       name: 'default',
@@ -462,6 +484,7 @@ export default function FeedScreen() {
 
   const { width } = useWindowDimensions();
   const [listHeight, setListHeight] = useState(0);
+  const flatListRef = useRef<FlatList>(null);
 
   // 👇 1. NUEVA FUNCIÓN: Cambia la pestaña y reinicia el video al primero 👇
   const handleTabChange = (tab: string) => {
@@ -526,6 +549,85 @@ export default function FeedScreen() {
     // (El backend ya se encargó de ocultar los remates con el candado)
     return true; 
   });
+
+  // ==========================================
+  // 👇 PANTALLA DINÁMICA: VACÍA O "ESTÁS AL DÍA" 👇
+  // ==========================================
+  const renderEmptyState = (isEndOfList = false) => {
+    let iconName = "checkmark-circle";
+    let iconColor = "#34C759"; // Verde de éxito
+    let title = "¡Estás al día!";
+    let desc = "Has visto todos los videos de esta sección por ahora.";
+    let steps: { icon: string; text: string }[] = [];
+    let ctaText = "Volver arriba";
+    let ctaAction = () => {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    };
+
+    // Si NO es el final de la lista, significa que está 100% vacía y mostramos los tutoriales
+    if (!isEndOfList) {
+      iconColor = COLORS.accent;
+      
+      if (activeTab === 'Siguiendo') {
+        iconName = "people-outline";
+        title = "Aún no sigues a nadie";
+        desc = "Descubre creadores y llena este espacio de contenido genial.";
+        steps = [
+          { icon: 'compass-outline', text: 'Explora videos en la pestaña "Para ti".' },
+          { icon: 'person-add-outline', text: 'Toca el botón "+" en la foto de un creador.' }
+        ];
+        ctaText = "Descubrir creadores";
+        ctaAction = () => handleTabChange('Para ti');
+        
+      } else if (activeTab === 'Ofertas') {
+        iconName = "pricetag-outline";
+        title = "No hay ofertas activas";
+        desc = "Nadie ha publicado descuentos todavía. ¡Aprovecha para destacar tus productos!";
+        steps = [
+          { icon: 'cloud-upload-outline', text: 'Sube un video de tu producto.' },
+          { icon: 'flash-outline', text: 'Edítalo y ponle un "Precio de Oferta".' }
+        ];
+        ctaText = "Ver videos normales";
+        ctaAction = () => handleTabChange('Para ti');
+      } else {
+        // Por si acaso se vacía el "Para ti"
+        iconName = "videocam-outline";
+        title = "No hay videos";
+        desc = "Vuelve más tarde para ver contenido nuevo.";
+        ctaText = "Actualizar";
+        ctaAction = onRefresh;
+      }
+    }
+
+    return (
+      <View style={[styles.emptyContainer, { height: listHeight }]}>
+        <LinearGradient colors={['#1a0e2a', '#000']} style={StyleSheet.absoluteFillObject} />
+        
+        <View style={[styles.emptyIconCircle, isEndOfList && { borderColor: 'rgba(52, 199, 89, 0.2)', backgroundColor: 'rgba(52, 199, 89, 0.1)' }]}>
+          <Ionicons name={iconName as any} size={48} color={iconColor} />
+        </View>
+        
+        <Text style={styles.emptyTitle}>{title}</Text>
+        <Text style={styles.emptyDesc}>{desc}</Text>
+
+        {steps.length > 0 && (
+          <View style={styles.explanationBox}>
+            <Text style={styles.explanationTitle}>¿Cómo funciona?</Text>
+            {steps.map((step, index) => (
+              <View key={index} style={styles.stepRow}>
+                <Ionicons name={step.icon as any} size={24} color={COLORS.primary} />
+                <Text style={styles.stepText}>{step.text}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <TouchableOpacity style={[styles.emptyBackButton, isEndOfList && { backgroundColor: '#333' }]} onPress={ctaAction}>
+          <Text style={styles.emptyBackButtonText}>{ctaText}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
   
   if (loading) {
     return (
@@ -563,6 +665,7 @@ export default function FeedScreen() {
 
       {listHeight > 0 && (
       <FlatList
+        ref={flatListRef}
         data={filteredVideos}
         renderItem={({ item, index }) => (
           <FeedItem 
@@ -577,11 +680,17 @@ export default function FeedScreen() {
         keyExtractor={keyExtractor}
         pagingEnabled 
         showsVerticalScrollIndicator={false}
-        
         // 👇 FRENADO EN SECO (Adiós asomos de videos) 👇
         snapToAlignment="start"
         decelerationRate="fast"
         snapToInterval={listHeight}
+        // 👇 2. SI LA LISTA ESTÁ 100% VACÍA 👇
+        ListEmptyComponent={() => renderEmptyState(false)}
+
+        // 👇 3. SI HAY VIDEOS Y LLEGASTE AL FINAL 👇
+        ListFooterComponent={filteredVideos.length > 0 ? () => renderEmptyState(true) : null}
+
+        contentContainerStyle={{ flexGrow: 1 }} // 👈 Evita que se corte
         disableIntervalMomentum={true} 
         bounces={false} 
         
@@ -764,6 +873,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 },
+  emptyIconCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255, 255, 255, 0.05)', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' },
+  emptyTitle: { fontSize: 26, fontWeight: 'bold', color: '#FFF', marginBottom: 10, textAlign: 'center' },
+  emptyDesc: { fontSize: 15, color: '#AAA', textAlign: 'center', marginBottom: 30, lineHeight: 22 },
+  explanationBox: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 15, padding: 20, width: '100%', borderWidth: 1, borderColor: '#333', marginBottom: 40 },
+  explanationTitle: { color: '#FFF', fontSize: 18, fontWeight: 'bold', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#444', paddingBottom: 10 },
+  stepRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+  stepText: { color: '#DDD', fontSize: 14, marginLeft: 15, flex: 1, lineHeight: 20 },
+  emptyBackButton: { backgroundColor: COLORS.primary, paddingVertical: 15, paddingHorizontal: 30, borderRadius: 25 },
+  emptyBackButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 
   optionsButton: { position: 'absolute', right: 20, zIndex: 100, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 8, paddingVertical: 10, borderRadius: 20 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

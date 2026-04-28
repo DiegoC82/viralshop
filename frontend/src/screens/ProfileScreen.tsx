@@ -48,8 +48,9 @@ export default function ProfileScreen({ navigation, route }: any) {
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
-  const [activeTab, setActiveTab] = useState<'uploaded' | 'ofertas' | 'liked' | 'remates' | 'metrics'>('uploaded');
+  const [activeTab, setActiveTab] = useState<'uploaded' | 'ofertas' | 'liked' | 'remates' | 'metrics' | 'activity'>('uploaded');
   const [menuVisible, setMenuVisible] = useState(false);
+  const [activityData, setActivityData] = useState<any[]>([]);
 
   // Estados para ViralShop Midnight (+18)
   const [midnightVisible, setMidnightVisible] = useState(false);
@@ -267,6 +268,8 @@ const handleSaveThumbnail = async () => {
       case 'remates':
         // Filtra los videos que son remates/subastas
         return (profile.videos || []).filter((v: any) => v.isAuction === true);
+      case 'activity':
+        return activityData;
       case 'metrics':
         return [{ id: 'metrics-view' }];
       default:
@@ -316,6 +319,27 @@ const handleSaveThumbnail = async () => {
       ]
     );
   };
+
+  const fetchActivity = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) return;
+      
+      const response = await axios.get(`${BACKEND_URL}/users/activity`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setActivityData(response.data);
+    } catch (error) {
+      console.log("Error al traer actividad:", error);
+    }
+  };
+
+  // Cuando se seleccione la pestaña de actividad, traemos los datos
+  useEffect(() => {
+    if (activeTab === 'activity') {
+      fetchActivity();
+    }
+  }, [activeTab]);
 
   // SUBCOMPONENTE: Estadísticas
   const StatItem = ({ label, value }: { label: string, value: string | number }) => (
@@ -621,6 +645,11 @@ const handleSaveThumbnail = async () => {
                   </View>
                 </View>
               </TouchableOpacity>
+
+              {/* 👇 NUEVA PESTAÑA: ACTIVIDAD 👇 */}
+              <TouchableOpacity style={[styles.tab, activeTab === 'activity' && styles.activeTab]} onPress={() => setActiveTab('activity')}>
+                <Ionicons name="notifications-outline" size={24} color={activeTab === 'activity' ? COLORS.text : COLORS.textMuted} />
+              </TouchableOpacity>
               
               <TouchableOpacity style={[styles.tab, activeTab === 'metrics' && styles.activeTab]} onPress={() => setActiveTab('metrics')}>
                 <Ionicons name="stats-chart-outline" size={24} color={activeTab === 'metrics' ? COLORS.text : COLORS.textMuted} />
@@ -630,6 +659,39 @@ const handleSaveThumbnail = async () => {
         }
 
         renderItem={({ item, index }) => {
+          if (activeTab === 'activity') {
+            const actItem = item as any; // El item ahora es una actividad
+            
+            return (
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#1A0E2A' }}>
+                <TouchableOpacity onPress={() => navigation.navigate('PublicProfile', { userId: actItem.user.id })}>
+                  <Image 
+                    source={{ uri: actItem.user.avatarUrl || `https://ui-avatars.com/api/?name=${actItem.user.username}&background=random&color=fff&size=150` }} 
+                    style={{ width: 44, height: 44, borderRadius: 22, marginRight: 15, borderWidth: 1, borderColor: COLORS.accent }} 
+                  />
+                </TouchableOpacity>
+                
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: COLORS.text, fontSize: 14 }}>
+                    <Text style={{ fontWeight: 'bold' }}>@{actItem.user.username}</Text> 
+                    {actItem.type === 'FOLLOW' ? ' comenzó a seguirte.' : ' le dio me gusta a tu video.'}
+                  </Text>
+                  <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 4 }}>
+                    {new Date(actItem.createdAt).toLocaleDateString('es-AR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
+
+                {/* Si es un Like, mostramos la miniatura del video a la derecha */}
+                {actItem.type === 'LIKE' && actItem.video && (
+                  <Image 
+                    source={{ uri: getThumbnail(actItem.video.videoUrl) }} 
+                    style={{ width: 40, height: 50, borderRadius: 6, backgroundColor: '#333' }} 
+                  />
+                )}
+              </View>
+            );
+          }
+
           // 👇 1. SI ESTAMOS EN LA PESTAÑA DE MÉTRICAS, DIBUJAMOS EL PANEL 👇
           if (activeTab === 'metrics') {
             const metrics = profile?.metrics || { totalViews: 0, totalSales: 0, activeAuctionsCount: 0 };
