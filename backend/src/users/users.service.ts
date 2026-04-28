@@ -193,48 +193,41 @@ export class UsersService {
   }
   
   // ==========================================
-  // 👇 NUEVO: Historial de Actividad 👇
+  // 👇 NUEVO: Listas de Actividad (Followers, Following, Likes) 👇
   // ==========================================
   async getActivity(userId: string) {
-    // 1. Buscamos quién te empezó a seguir recientemente
+    // 1. Seguidores (Quién te sigue)
     const newFollowers = await this.prisma.follows.findMany({
       where: { followingId: userId },
-      include: { follower: { select: { id: true, username: true, avatarUrl: true, isVerified: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 20 // Traemos los últimos 20
+      include: { follower: { select: { id: true, username: true, name: true, avatarUrl: true, isVerified: true } } },
+      orderBy: { createdAt: 'desc' }
     });
 
-    // 2. Buscamos los likes que recibieron tus videos
+    // 2. Siguiendo (A quién sigues tú) 👈 ¡NUEVO!
+    const following = await this.prisma.follows.findMany({
+      where: { followerId: userId },
+      include: { following: { select: { id: true, username: true, name: true, avatarUrl: true, isVerified: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // 3. Likes en tus videos
     const newLikes = await this.prisma.like.findMany({
-      where: { video: { userId: userId } }, // Likes en videos donde tú eres el dueño
+      where: { video: { userId: userId } },
       include: { 
-        user: { select: { id: true, username: true, avatarUrl: true, isVerified: true } },
+        user: { select: { id: true, username: true, name: true, avatarUrl: true, isVerified: true } },
         video: { select: { id: true, videoUrl: true, muxAssetId: true } }
       },
-      orderBy: { createdAt: 'desc' },
-      take: 20 // Traemos los últimos 20
+      orderBy: { createdAt: 'desc' }
     });
 
-    // 3. Formateamos y unimos las dos listas
+    // 4. Unimos todo con su etiqueta correspondiente
     const activityList = [
-      ...newFollowers.map(f => ({
-        id: `follow_${f.followerId}_${f.createdAt.getTime()}`,
-        type: 'FOLLOW',
-        user: f.follower,
-        createdAt: f.createdAt
-      })),
-      ...newLikes.map(l => ({
-        id: `like_${l.id}`,
-        type: 'LIKE',
-        user: l.user,
-        video: l.video,
-        createdAt: l.createdAt
-      }))
+      ...newFollowers.map(f => ({ id: `follower_${f.followerId}`, type: 'FOLLOW', user: f.follower, createdAt: f.createdAt })),
+      ...following.map(f => ({ id: `following_${f.followingId}`, type: 'FOLLOWING', user: f.following, createdAt: f.createdAt })), // 👈 Agregado
+      ...newLikes.map(l => ({ id: `like_${l.id}`, type: 'LIKE', user: l.user, video: l.video, createdAt: l.createdAt }))
     ];
 
-    // 4. Ordenamos todo por fecha (lo más reciente primero)
     activityList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
     return activityList;
   }
   

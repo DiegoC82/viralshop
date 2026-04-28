@@ -87,4 +87,10 @@ export class UsersController {
     return this.usersService.getActivity(userId);
   }
 
+  // 👇 RUTA PARA VER LA ACTIVIDAD DE OTROS PERFILES 👇
+  @Get(':id/activity')
+  getPublicActivity(@Param('id') id: string) {
+    return this.usersService.getActivity(id);
+  }
+
 }
