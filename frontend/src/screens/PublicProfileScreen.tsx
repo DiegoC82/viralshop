@@ -142,6 +142,50 @@ export default function PublicProfileScreen({ route, navigation }: any) {
     return 'https://via.placeholder.com/150';
   };
 
+  // 👇 ESTADOS PARA LA LISTA DE SEGUIDORES/SIGUIENDO 👇
+  const [listModalVisible, setListModalVisible] = useState(false);
+  const [listModalType, setListModalType] = useState<'followers' | 'following' | 'likes'>('followers');
+  const [listData, setListData] = useState<any[]>([]);
+  const [isListLoading, setIsListLoading] = useState(false); // 👈 NUEVO: Estado real de carga
+
+  // 👇 FUNCIÓN PARA OBTENER LOS DATOS 👇
+  const openActivityList = async (type: 'followers' | 'following' | 'likes') => {
+    setListModalType(type);
+    setListModalVisible(true);
+    setListData([]); 
+    setIsListLoading(true); // 👈 Empieza a cargar
+
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) return;
+      
+      // NOTA: En PublicProfileScreen usa `${BACKEND_URL}/users/${userId}/activity`
+      // En ProfileScreen usa `${BACKEND_URL}/users/activity`
+      const url = profile?.id && route.name === 'PublicProfile' 
+        ? `${BACKEND_URL}/users/${userId}/activity` 
+        : `${BACKEND_URL}/users/activity`;
+
+      const response = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      let filteredData = [];
+      if (type === 'followers') {
+        filteredData = response.data.filter((item: any) => item.type === 'FOLLOW');
+      } else if (type === 'likes') {
+        filteredData = response.data.filter((item: any) => item.type === 'LIKE');
+      } else if (type === 'following') {
+        filteredData = response.data.filter((item: any) => item.type === 'FOLLOWING'); // 👈 AHORA SÍ LO FILTRA
+      }
+      
+      setListData(filteredData);
+    } catch (error) {
+      console.log("Error al traer la lista:", error);
+    } finally {
+      setIsListLoading(false); // 👈 Termina de cargar (tenga o no tenga datos)
+    }
+  };
+
   // 👇 FUNCIÓN PARA VOLVER AL FEED AL DESLIZAR 👇
   const onSwipe = (event: any) => {
     if (event.nativeEvent.oldState === State.ACTIVE) {
@@ -283,20 +327,20 @@ export default function PublicProfileScreen({ route, navigation }: any) {
 
                 {/* Estadísticas del perfil */}
                 <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
+                  <TouchableOpacity style={styles.statItem} onPress={() => openActivityList('following')}>
                     <Text style={styles.statValue}>{profile?.followingCount || 0}</Text>
                     <Text style={styles.statLabel}>Siguiendo</Text>
-                  </View>
+                  </TouchableOpacity>
                   <View style={styles.statSeparator} />
-                  <View style={styles.statItem}>
+                  <TouchableOpacity style={styles.statItem} onPress={() => openActivityList('followers')}>
                     <Text style={styles.statValue}>{profile?.followersCount || 0}</Text>
                     <Text style={styles.statLabel}>Seguidores</Text>
-                  </View>
+                  </TouchableOpacity>
                   <View style={styles.statSeparator} />
-                  <View style={styles.statItem}>
+                  <TouchableOpacity style={styles.statItem} onPress={() => openActivityList('likes')}>
                     <Text style={styles.statValue}>{profile?.likesCount || 0}</Text>
                     <Text style={styles.statLabel}>Me gusta</Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
 
               </View>
@@ -348,6 +392,59 @@ export default function PublicProfileScreen({ route, navigation }: any) {
             <Text style={styles.emptyText}>Este usuario aún no ha subido videos.</Text>
           }
         />
+
+        {/* ========================================== */}
+      {/* 👇 MODAL DE LISTA (SEGUIDORES / LIKES) 👇 */}
+      {/* ========================================== */}
+      <Modal visible={listModalVisible} transparent={true} animationType="slide">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setListModalVisible(false)}>
+          <View style={[styles.bottomSheet, { height: '70%', paddingHorizontal: 0 }]}>
+            <View style={styles.bottomSheetHandle} />
+            <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 }}>
+              {listModalType === 'followers' ? 'Seguidores' : listModalType === 'following' ? 'Siguiendo' : 'Me gusta'}
+            </Text>
+
+            {isListLoading ? (
+              <ActivityIndicator color={COLORS.accent} style={{ marginTop: 20 }} />
+            ) : listData.length === 0 ? (
+              <Text style={{ color: COLORS.textMuted, textAlign: 'center', marginTop: 30, fontSize: 16 }}>
+                Aún no hay usuarios aquí.
+              </Text>
+            ) : (
+              <FlatList
+                data={listData}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1A0E2A' }}
+                    onPress={() => {
+                      setListModalVisible(false);
+                      navigation.navigate('PublicProfile', { userId: item.user.id });
+                    }}
+                  >
+                    <Image 
+                      source={{ uri: item.user.avatarUrl || `https://ui-avatars.com/api/?name=${item.user.username}&background=random&color=fff&size=150` }} 
+                      style={{ width: 44, height: 44, borderRadius: 22, marginRight: 15 }} 
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: 'bold' }}>{item.user.name}</Text>
+                      <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>@{item.user.username}</Text>
+                    </View>
+                    
+                    {listModalType === 'likes' && item.video && (
+                      <Image 
+                        source={{ uri: `https://image.mux.com/${item.video.muxAssetId}/thumbnail.jpg?time=1` }} 
+                        style={{ width: 36, height: 48, borderRadius: 4, backgroundColor: '#333' }} 
+                      />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
         
         {/* MODAL DE REPORTE */}
         {/* ========================================== */}
@@ -467,6 +564,7 @@ const styles = StyleSheet.create({
   // Estilos del Modal de Reporte
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   bottomSheetReport: { backgroundColor: COLORS.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 },
+ bottomSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 15, borderTopRightRadius: 15, padding: 20, paddingBottom: 40, minHeight: 300 },
   bottomSheetHandle: { width: 40, height: 4, backgroundColor: '#555', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   reportItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, borderBottomWidth: 0.5, borderBottomColor: '#333' },
   reportItemText: { color: '#FF2D55', fontSize: 16, fontWeight: 'bold', marginLeft: 15 },

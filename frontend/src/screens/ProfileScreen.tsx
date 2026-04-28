@@ -1,25 +1,14 @@
 // frontend/src/screens/ProfileScreen.tsx
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Image, 
-  FlatList, 
-  TouchableOpacity, 
-  Dimensions, 
-  ActivityIndicator, 
-  Alert,
-  TextInput,
-  Modal,
-  Animated
+import { View, Text, StyleSheet, Image, FlatList, TouchableOpacity, Dimensions, ActivityIndicator, Alert, TextInput, Modal, Animated, 
+  Switch, Share // 👈 ¡AGREGA SHARE AQUÍ!
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CATEGORIES_DATA } from '../data/categories';
+import * as Contacts from 'expo-contacts';
 import Constants from 'expo-constants';
 import axios from 'axios';
-import { Switch } from 'react-native'; // 👈 Asegúrate de importar Switch
 import { useCurrency } from '../context/CurrencyContext';
 import { formatCurrency } from '../utils/formatters';
 import * as ImagePicker from 'expo-image-picker';
@@ -48,7 +37,7 @@ export default function ProfileScreen({ navigation, route }: any) {
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
-  const [activeTab, setActiveTab] = useState<'uploaded' | 'ofertas' | 'liked' | 'remates' | 'metrics' | 'activity'>('uploaded');
+  const [activeTab, setActiveTab] = useState<'uploaded' | 'ofertas' | 'liked' | 'remates' | 'metrics'>('uploaded');
   const [menuVisible, setMenuVisible] = useState(false);
   const [activityData, setActivityData] = useState<any[]>([]);
 
@@ -175,6 +164,62 @@ export default function ProfileScreen({ navigation, route }: any) {
     }
   };
 
+  // 👇 ESTADOS Y FUNCIÓN PARA CONTACTOS DEL TELÉFONO 👇
+  const [contactsModalVisible, setContactsModalVisible] = useState(false);
+  const [phoneContacts, setPhoneContacts] = useState<Contacts.Contact[]>([]);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(false);
+  
+  const [contactSearchQuery, setContactSearchQuery] = useState('');
+
+  const handleSyncContacts = async () => {
+    setIsLoadingContacts(true);
+    setContactsModalVisible(true); // Abrimos el modal rápido para que el usuario vea feedback
+
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      
+      if (status === 'granted') {
+        const { data } = await Contacts.getContactsAsync({
+          // 👇 AHORA SÍ LE PEDIMOS LAS FOTOS AL CELULAR 👇
+          fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Image],
+        });
+
+        if (data.length > 0) {
+          // Filtramos solo los contactos que tengan número de teléfono y nombre
+          const validContacts = data.filter(c => c.phoneNumbers && c.phoneNumbers.length > 0 && c.name);
+          setPhoneContacts(validContacts);
+        } else {
+          Alert.alert("Aviso", "No se encontraron contactos en este teléfono.");
+        }
+      } else {
+        Alert.alert("Permiso denegado", "Necesitamos acceso para encontrar a tus amigos.");
+        setContactsModalVisible(false);
+      }
+    } catch (error) {
+      console.log("Error leyendo contactos:", error);
+      Alert.alert("Error", "No se pudieron sincronizar los contactos.");
+    } finally {
+      setIsLoadingContacts(false);
+    }
+  };
+
+  // 👇 FILTRA LOS CONTACTOS EN TIEMPO REAL MIENTRAS ESCRIBES 👇
+  const filteredContacts = phoneContacts.filter(c => 
+    c.name?.toLowerCase().includes(contactSearchQuery.toLowerCase())
+  );
+
+  const inviteContact = async (phoneNumber: string) => {
+    // Aquí puedes usar la API de Share de React Native para abrir WhatsApp o SMS
+    // con un mensaje predefinido.
+    try {
+      await Share.share({
+        message: `¡Únete a ViralShop! Usa este enlace para descargar la app y sígueme: https://viralshop.app/@${profile?.username}`,
+      });
+    } catch (error) {
+      console.log("Error compartiendo:", error);
+    }
+  };
+
   const [tempThumbTime, setTempThumbTime] = useState(1);
 const [isSavingThumb, setIsSavingThumb] = useState(false);
 
@@ -216,6 +261,45 @@ const handleSaveThumbnail = async () => {
       Alert.alert("Error", "No se pudo actualizar el perfil.");
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  // 👇 ESTADOS PARA LA LISTA DE SEGUIDORES/SIGUIENDO 👇
+  const [listModalVisible, setListModalVisible] = useState(false);
+  const [listModalType, setListModalType] = useState<'followers' | 'following' | 'likes'>('followers');
+  const [listData, setListData] = useState<any[]>([]);
+  const [isListLoading, setIsListLoading] = useState(false); // 👈 NUEVO: Estado real de carga
+
+  // 👇 FUNCIÓN PARA OBTENER LOS DATOS EN TU PROPIO PERFIL 👇
+  const openActivityList = async (type: 'followers' | 'following' | 'likes') => {
+    setListModalType(type);
+    setListModalVisible(true);
+    setListData([]); 
+    setIsListLoading(true); // Empieza a cargar
+
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) return;
+      
+      // La URL en ProfileScreen es simple porque usa tu token
+      const response = await axios.get(`${BACKEND_URL}/users/activity`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      let filteredData = [];
+      if (type === 'followers') {
+        filteredData = response.data.filter((item: any) => item.type === 'FOLLOW');
+      } else if (type === 'likes') {
+        filteredData = response.data.filter((item: any) => item.type === 'LIKE');
+      } else if (type === 'following') {
+        filteredData = response.data.filter((item: any) => item.type === 'FOLLOWING');
+      }
+      
+      setListData(filteredData);
+    } catch (error) {
+      console.log("Error al traer la lista:", error);
+    } finally {
+      setIsListLoading(false); // Termina de cargar
     }
   };
 
@@ -268,8 +352,6 @@ const handleSaveThumbnail = async () => {
       case 'remates':
         // Filtra los videos que son remates/subastas
         return (profile.videos || []).filter((v: any) => v.isAuction === true);
-      case 'activity':
-        return activityData;
       case 'metrics':
         return [{ id: 'metrics-view' }];
       default:
@@ -320,33 +402,12 @@ const handleSaveThumbnail = async () => {
     );
   };
 
-  const fetchActivity = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) return;
-      
-      const response = await axios.get(`${BACKEND_URL}/users/activity`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setActivityData(response.data);
-    } catch (error) {
-      console.log("Error al traer actividad:", error);
-    }
-  };
-
-  // Cuando se seleccione la pestaña de actividad, traemos los datos
-  useEffect(() => {
-    if (activeTab === 'activity') {
-      fetchActivity();
-    }
-  }, [activeTab]);
-
   // SUBCOMPONENTE: Estadísticas
-  const StatItem = ({ label, value }: { label: string, value: string | number }) => (
-    <View style={styles.statItem}>
+  const StatItem = ({ label, value, onPress }: { label: string, value: string | number, onPress?: () => void }) => (
+    <TouchableOpacity style={styles.statItem} onPress={onPress}>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </TouchableOpacity>
   );
 
   // -------------------------------------------------------------
@@ -409,7 +470,10 @@ const handleSaveThumbnail = async () => {
         </View>
         {/* Derecha: Agregar persona + menú hamburguesa */}
         <View style={styles.headerRight}>
-          <Ionicons name="person-add-outline" size={24} color={COLORS.text} style={{ marginRight: 16 }} />
+          {/* 👇 BOTÓN CONECTADO A CONTACTOS 👇 */}
+          <TouchableOpacity onPress={handleSyncContacts}>
+            <Ionicons name="person-add-outline" size={24} color={COLORS.text} style={{ marginRight: 16 }} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => setMenuVisible(true)}>
             <Ionicons name="menu-outline" size={28} color={COLORS.text} />
           </TouchableOpacity>
@@ -528,11 +592,23 @@ const handleSaveThumbnail = async () => {
 
               {/* Stats con separadores verticales */}
               <View style={styles.statsRow}>
-                <StatItem value={profile?.followingCount || 0} label="Siguiendo" />
+                <StatItem 
+                  value={profile?.followingCount || 0} 
+                  label="Siguiendo" 
+                  onPress={() => openActivityList('following')} 
+                />
                 <View style={styles.statSeparator} />
-                <StatItem value={profile?.followersCount || 0} label="Seguidores" />
+                <StatItem 
+                  value={profile?.followersCount || 0} 
+                  label="Seguidores" 
+                  onPress={() => openActivityList('followers')} 
+                />
                 <View style={styles.statSeparator} />
-                <StatItem value={profile?.likes?.length || 0} label="Me gusta" />
+                <StatItem 
+                  value={profile?.likes?.length || 0} 
+                  label="Me gusta" 
+                  onPress={() => openActivityList('likes')} 
+                />
               </View>
 
               {/* Botón de Perfil Verificado */}
@@ -645,11 +721,6 @@ const handleSaveThumbnail = async () => {
                   </View>
                 </View>
               </TouchableOpacity>
-
-              {/* 👇 NUEVA PESTAÑA: ACTIVIDAD 👇 */}
-              <TouchableOpacity style={[styles.tab, activeTab === 'activity' && styles.activeTab]} onPress={() => setActiveTab('activity')}>
-                <Ionicons name="notifications-outline" size={24} color={activeTab === 'activity' ? COLORS.text : COLORS.textMuted} />
-              </TouchableOpacity>
               
               <TouchableOpacity style={[styles.tab, activeTab === 'metrics' && styles.activeTab]} onPress={() => setActiveTab('metrics')}>
                 <Ionicons name="stats-chart-outline" size={24} color={activeTab === 'metrics' ? COLORS.text : COLORS.textMuted} />
@@ -659,39 +730,6 @@ const handleSaveThumbnail = async () => {
         }
 
         renderItem={({ item, index }) => {
-          if (activeTab === 'activity') {
-            const actItem = item as any; // El item ahora es una actividad
-            
-            return (
-              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#1A0E2A' }}>
-                <TouchableOpacity onPress={() => navigation.navigate('PublicProfile', { userId: actItem.user.id })}>
-                  <Image 
-                    source={{ uri: actItem.user.avatarUrl || `https://ui-avatars.com/api/?name=${actItem.user.username}&background=random&color=fff&size=150` }} 
-                    style={{ width: 44, height: 44, borderRadius: 22, marginRight: 15, borderWidth: 1, borderColor: COLORS.accent }} 
-                  />
-                </TouchableOpacity>
-                
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: COLORS.text, fontSize: 14 }}>
-                    <Text style={{ fontWeight: 'bold' }}>@{actItem.user.username}</Text> 
-                    {actItem.type === 'FOLLOW' ? ' comenzó a seguirte.' : ' le dio me gusta a tu video.'}
-                  </Text>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 4 }}>
-                    {new Date(actItem.createdAt).toLocaleDateString('es-AR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                </View>
-
-                {/* Si es un Like, mostramos la miniatura del video a la derecha */}
-                {actItem.type === 'LIKE' && actItem.video && (
-                  <Image 
-                    source={{ uri: getThumbnail(actItem.video.videoUrl) }} 
-                    style={{ width: 40, height: 50, borderRadius: 6, backgroundColor: '#333' }} 
-                  />
-                )}
-              </View>
-            );
-          }
-
           // 👇 1. SI ESTAMOS EN LA PESTAÑA DE MÉTRICAS, DIBUJAMOS EL PANEL 👇
           if (activeTab === 'metrics') {
             const metrics = profile?.metrics || { totalViews: 0, totalSales: 0, activeAuctionsCount: 0 };
@@ -992,6 +1030,134 @@ const handleSaveThumbnail = async () => {
             )}
           </View>
         </View>
+      </Modal>
+
+      {/* ========================================== */}
+      {/* 👇 MODAL DE CONTACTOS DEL TELÉFONO 👇 */}
+      {/* ========================================== */}
+      <Modal visible={contactsModalVisible} transparent={true} animationType="slide">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => { setContactsModalVisible(false); setContactSearchQuery(''); }}>
+          <TouchableOpacity activeOpacity={1} style={[styles.bottomSheet, { height: '85%', paddingHorizontal: 0 }]}>
+            <View style={styles.bottomSheetHandle} />
+            <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>
+              Encontrar Amigos
+            </Text>
+
+            {/* 👇 EL NUEVO BUSCADOR 👇 */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A0E2A', borderRadius: 12, paddingHorizontal: 15, marginHorizontal: 20, marginBottom: 15, borderWidth: 1, borderColor: '#333' }}>
+              <Ionicons name="search-outline" size={20} color={COLORS.textMuted} />
+              <TextInput 
+                style={{ flex: 1, color: COLORS.text, fontSize: 15, paddingVertical: 10, paddingHorizontal: 10 }} 
+                placeholder="Buscar en tus contactos..." 
+                placeholderTextColor={COLORS.textMuted}
+                value={contactSearchQuery}
+                onChangeText={setContactSearchQuery}
+              />
+              {contactSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setContactSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {isLoadingContacts ? (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={COLORS.accent} />
+                <Text style={{ color: COLORS.textMuted, marginTop: 10 }}>Buscando en tu libreta...</Text>
+              </View>
+            ) : filteredContacts.length === 0 ? (
+              <Text style={{ color: COLORS.textMuted, textAlign: 'center', marginTop: 30 }}>No se encontraron contactos.</Text>
+            ) : (
+              <FlatList
+                data={filteredContacts} // 👈 AHORA USA LA LISTA FILTRADA
+                keyExtractor={(_, index) => index.toString()}
+                keyboardShouldPersistTaps="handled" // Para poder tocar botones sin que el teclado moleste
+                renderItem={({ item }) => (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1A0E2A' }}>
+                    
+                    {/* 👇 LÓGICA DE FOTO O INICIAL 👇 */}
+                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 15, overflow: 'hidden' }}>
+                      {item.imageAvailable && item.image ? (
+                        <Image source={{ uri: item.image.uri }} style={{ width: '100%', height: '100%' }} />
+                      ) : (
+                        <Text style={{ color: '#FFF', fontSize: 18, fontWeight: 'bold' }}>
+                          {item.name ? item.name.charAt(0).toUpperCase() : '?'}
+                        </Text>
+                      )}
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: 'bold' }} numberOfLines={1}>{item.name}</Text>
+                      <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>
+                        {item.phoneNumbers && item.phoneNumbers.length > 0 ? item.phoneNumbers[0].number : 'Sin número'}
+                      </Text>
+                    </View>
+                    
+                    <TouchableOpacity 
+                      style={{ backgroundColor: COLORS.accent, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20 }}
+                      onPress={() => inviteContact(item.phoneNumbers?.[0]?.number || '')}
+                    >
+                      <Text style={{ color: '#000', fontWeight: 'bold', fontSize: 12 }}>Invitar</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              />
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ========================================== */}
+      {/* 👇 MODAL DE LISTA (SEGUIDORES / LIKES) 👇 */}
+      {/* ========================================== */}
+      <Modal visible={listModalVisible} transparent={true} animationType="slide">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setListModalVisible(false)}>
+          <View style={[styles.bottomSheet, { height: '70%', paddingHorizontal: 0 }]}>
+            <View style={styles.bottomSheetHandle} />
+            <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 }}>
+              {listModalType === 'followers' ? 'Seguidores' : listModalType === 'following' ? 'Siguiendo' : 'Me gusta'}
+            </Text>
+
+            {isListLoading ? (
+              <ActivityIndicator color={COLORS.accent} style={{ marginTop: 20 }} />
+            ) : listData.length === 0 ? (
+              <Text style={{ color: COLORS.textMuted, textAlign: 'center', marginTop: 30, fontSize: 16 }}>
+                Aún no hay usuarios aquí.
+              </Text>
+            ) : (
+              <FlatList
+                data={listData}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1A0E2A' }}
+                    onPress={() => {
+                      setListModalVisible(false);
+                      navigation.navigate('PublicProfile', { userId: item.user.id });
+                    }}
+                  >
+                    <Image 
+                      source={{ uri: item.user.avatarUrl || `https://ui-avatars.com/api/?name=${item.user.username}&background=random&color=fff&size=150` }} 
+                      style={{ width: 44, height: 44, borderRadius: 22, marginRight: 15 }} 
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: 'bold' }}>{item.user.name}</Text>
+                      <Text style={{ color: COLORS.textMuted, fontSize: 13 }}>@{item.user.username}</Text>
+                    </View>
+                    
+                    {listModalType === 'likes' && item.video && (
+                      <Image 
+                        source={{ uri: `https://image.mux.com/${item.video.muxAssetId}/thumbnail.jpg?time=1` }} 
+                        style={{ width: 36, height: 48, borderRadius: 4, backgroundColor: '#333' }} 
+                      />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* ========================================== */}

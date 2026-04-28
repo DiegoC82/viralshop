@@ -65,40 +65,50 @@ Notifications.setNotificationHandler({
 async function registerForPushNotificationsAsync() {
   let token;
 
-  // 1. Verificamos si es un celular real
+  // 👇 1. ESTO AHORA VA PRIMERO: Creamos el canal de Android ANTES de pedir permiso.
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
+  }
+
+  // 2. Verificamos si es un celular físico
   if (Device.isDevice) {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
-    // 2. Si no tenemos permiso, mostramos el cartel
+    // 3. Si aún no hay permiso, mostramos el cartel nativo del celular
     if (existingStatus !== 'granted') {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
 
-    // 3. Si el usuario dijo que NO
+    // 4. Si el usuario rechazó o el celular lo bloqueó automáticamente
     if (finalStatus !== 'granted') {
       Alert.alert(
-        'Notificaciones desactivadas', 
-        'Ve a los ajustes de tu celular para activar las notificaciones y no perderte ninguna venta.'
+        'Permisos requeridos', 
+        'Para recibir notificaciones, ve a los Ajustes de tu celular -> Aplicaciones -> "Expo Go" -> Notificaciones -> Permitir.'
       );
       return;
     }
 
-    // 4. Intentamos obtener el Token (Con manejo de errores)
+    // 5. Intentamos obtener el Token de Expo
     try {
-      // Expo nuevo requiere el projectId
       const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
       
       token = (await Notifications.getExpoPushTokenAsync({
-        projectId: projectId, // Si no usas EAS aún, esto evitará que crashee
+        projectId: projectId, 
       })).data;
 
-      // ¡Avisamos por pantalla que funcionó! (Puedes borrar este Alert cuando ya funcione)
-      // Alert.alert("¡Token Obtenido!", "El celular está listo para recibir Push.");
+      // 👇 DESCOMENTA ESTA LÍNEA SOLO PARA PROBAR SI FUNCIONA 👇
+      // Alert.alert("¡Exito!", `Tu celular generó el token: ${token.substring(0, 10)}...`);
 
+      // Guardamos el token en la base de datos
       const userToken = await AsyncStorage.getItem('userToken');
-      if (userToken) {
+      if (userToken && token) {
         await axios.patch(`${BASE_URL}/users/update-push-token`, 
           { pushToken: token },
           { headers: { Authorization: `Bearer ${userToken}` } }
@@ -106,21 +116,9 @@ async function registerForPushNotificationsAsync() {
       }
     } catch (error) {
       console.error("Error obteniendo el token de Expo:", error);
-      Alert.alert("Error de Expo", "Hubo un problema al generar el token de notificaciones.");
     }
   } else {
-    // Si estás en la PC, te avisa en lugar de fallar en silencio
-    Alert.alert('Emulador detectado', 'Las notificaciones Push solo funcionan en un celular físico.');
-  }
-
-  // 5. Configuración específica para Android
-  if (Platform.OS === 'android') {
-    Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C',
-    });
+    Alert.alert('Emulador', 'Las notificaciones no funcionan en emuladores de PC.');
   }
 
   return token;

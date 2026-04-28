@@ -145,6 +145,7 @@ export default function ChatDetailsScreen({ route, navigation }: any) {
       <KeyboardAvoidingView 
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} // 👈 Ajuste clave para iOS
       >
         {loading ? (
           <View style={styles.messagesContainer}>
@@ -156,9 +157,11 @@ export default function ChatDetailsScreen({ route, navigation }: any) {
             data={messages}
             keyExtractor={item => item.id}
             renderItem={renderMessage}
-            inverted // 👈 Hace que los mensajes empiecen desde abajo (como WhatsApp/TikTok)
+            inverted 
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingHorizontal: 15, paddingVertical: 20 }}
+            // 👇 IMPORTANTE: Añade esto para que el teclado se cierre si arrastras hacia abajo
+            keyboardDismissMode="on-drag" 
             ListEmptyComponent={
               <View style={[styles.messagesContainer, { transform: [{ scaleY: -1 }] }]}>
                 <Ionicons name="chatbox-ellipses-outline" size={60} color={COLORS.textMuted} />
@@ -170,7 +173,7 @@ export default function ChatDetailsScreen({ route, navigation }: any) {
         )}
 
         {/* CAMPO DE TEXTO PARA ENVIAR MENSAJE */}
-        <View style={[styles.inputContainer, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 20) : 15 }]}>
+        <View style={[styles.inputContainer, { paddingBottom: Platform.OS === 'ios' ? 20 : 15 }]}>
           <TextInput 
             style={styles.input} 
             placeholder="Enviar mensaje..." 
