@@ -191,7 +191,53 @@ export class UsersService {
       data: { pushToken },
     });
   }
+  
+  // ==========================================
+  // 👇 NUEVO: Historial de Actividad 👇
+  // ==========================================
+  async getActivity(userId: string) {
+    // 1. Buscamos quién te empezó a seguir recientemente
+    const newFollowers = await this.prisma.follows.findMany({
+      where: { followingId: userId },
+      include: { follower: { select: { id: true, username: true, avatarUrl: true, isVerified: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 20 // Traemos los últimos 20
+    });
 
+    // 2. Buscamos los likes que recibieron tus videos
+    const newLikes = await this.prisma.like.findMany({
+      where: { video: { userId: userId } }, // Likes en videos donde tú eres el dueño
+      include: { 
+        user: { select: { id: true, username: true, avatarUrl: true, isVerified: true } },
+        video: { select: { id: true, videoUrl: true, muxAssetId: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20 // Traemos los últimos 20
+    });
+
+    // 3. Formateamos y unimos las dos listas
+    const activityList = [
+      ...newFollowers.map(f => ({
+        id: `follow_${f.followerId}_${f.createdAt.getTime()}`,
+        type: 'FOLLOW',
+        user: f.follower,
+        createdAt: f.createdAt
+      })),
+      ...newLikes.map(l => ({
+        id: `like_${l.id}`,
+        type: 'LIKE',
+        user: l.user,
+        video: l.video,
+        createdAt: l.createdAt
+      }))
+    ];
+
+    // 4. Ordenamos todo por fecha (lo más reciente primero)
+    activityList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+    return activityList;
+  }
+  
     // 👇 NUEVA FUNCIÓN: Sube la imagen directamente a Cloudinary 👇
   async uploadImageToCloudinary(fileBuffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {

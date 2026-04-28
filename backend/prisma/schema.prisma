@@ -158,8 +158,13 @@ model Bid {
 model Follows {
   followerId  String
   followingId String
+
+  // 👇 ESTA ES LA LÍNEA MÁGICA QUE TE FALTÓ 👇
+  createdAt   DateTime @default(now()) 
+
   follower    User @relation("follower", fields: [followerId], references: [id])
   following   User @relation("following", fields: [followingId], references: [id])
+  
   @@id([followerId, followingId])
 }
 

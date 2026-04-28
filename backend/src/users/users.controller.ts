@@ -78,4 +78,13 @@ export class UsersController {
   async updatePushToken(@Req() req: any, @Body('pushToken') pushToken: string) {
     return this.usersService.updatePushToken(req.user.sub, pushToken);
   }
+  
+  // 👇 NUEVA RUTA: Obtener Actividad 👇
+  @UseGuards(JwtAuthGuard)
+  @Get('activity')
+  getActivity(@Request() req: any) {
+    const userId = req.user.sub;
+    return this.usersService.getActivity(userId);
+  }
+
 }
