@@ -39,7 +39,7 @@ export class UsersService {
         likes: { include: { video: { include: { user: true } } }, orderBy: { createdAt: 'desc' } },
         savedVideos: { include: { video: { include: { user: true } } }, orderBy: { createdAt: 'desc' } },
         _count: {
-          select: { followers: true, following: true, likes: true } // 👈 Traemos los contadores reales
+          select: { followers: true, following: true, likes: true, adultFollowers: true, adultFollowing: true }// 👈 Traemos los contadores reales
         }
       },
     });
@@ -77,6 +77,8 @@ export class UsersService {
       followersCount: user._count.followers,
       followingCount: user._count.following,
       likesCount: user._count.likes,
+      adultFollowersCount: user._count.adultFollowers,
+      adultFollowingCount: user._count.adultFollowing,
       metrics: {
         totalViews,
         totalSales,

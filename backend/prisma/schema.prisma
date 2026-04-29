@@ -25,6 +25,8 @@ model User {
   adultUsername  String?
   adultAvatarUrl String?
   adultBio       String?
+  adultFollowers AdultFollows[] @relation("adultFollowing")
+  adultFollowing AdultFollows[] @relation("adultFollower")
   role        UserRole     @default(BUYER)
   isVerified  Boolean      @default(false) // Perfil verificado
   createdAt   DateTime     @default(now())
@@ -182,4 +184,16 @@ model Report {
   createdAt   DateTime @default(now())
 
   reporter    User     @relation("UserReports", fields: [reporterId], references: [id])
+}
+
+// 👇 NUEVA TABLA: Seguidores exclusivos para el lado oscuro
+model AdultFollows {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower    User @relation("adultFollower", fields: [followerId], references: [id])
+  following   User @relation("adultFollowing", fields: [followingId], references: [id])
+  
+  @@id([followerId, followingId])
 }
