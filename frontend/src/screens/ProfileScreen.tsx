@@ -339,6 +339,10 @@ const handleSaveThumbnail = async () => {
   // 5. DETERMINAR QUÉ LISTA DE VIDEOS MOSTRAR SEGÚN EL TAB
   const getActiveData = () => {
     if (!profile) return [];
+
+    // 👇 EL MURO DE PRIVACIDAD: Filtramos para EXCLUIR los videos +18 👇
+    const normalVideos = (profile.videos || []).filter((v: any) => !v.is18Plus);
+    const normalLikes = (profile.likes || []).filter((l: any) => !l.video?.is18Plus).map((l: any) => l.video);
     
     switch (activeTab) {
       case 'uploaded':
@@ -1017,7 +1021,7 @@ const handleSaveThumbnail = async () => {
                       if (text === '123456') { // Contraseña provisoria
                         setMidnightVisible(false);
                         setEnteredPassword('');
-                        navigation.navigate('AdultFeed');
+                        navigation.navigate('MidnightNavigation');
                       } else {
                         setPinError(true);
                         setTimeout(() => setEnteredPassword(''), 500);

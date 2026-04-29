@@ -26,6 +26,7 @@ model User {
   adultUsername  String?
   adultAvatarUrl String?
   adultBio       String?
+  isAdultVerified Boolean @default(false) // 👈 NUEVO: Verificación exclusiva para vender acá
 
   role        UserRole     @default(BUYER)
   isVerified  Boolean      @default(false) // Perfil verificado

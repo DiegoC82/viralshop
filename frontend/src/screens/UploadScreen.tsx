@@ -1,9 +1,9 @@
 // frontend/src/screens/UploadScreen.tsx
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Modal, FlatList, Switch } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Modal, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location'; // 👇 IMPORTAMOS EL GPS 👇
+import * as Location from 'expo-location'; 
 import { useVideoPlayer, VideoView } from 'expo-video';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,20 +13,26 @@ import { CATEGORIES_DATA } from '../data/categories';
 
 const BACKEND_URL = 'https://viralshop-xr9v.onrender.com';
 
-export default function UploadScreen({ navigation }: any) {
+// 👇 ARREGLO 1: Agregamos `route` a los parámetros 👇
+export default function UploadScreen({ route, navigation }: any) {
+  // Leemos si venimos desde el Modo Nocturno
+  const isAdultMode = route.params?.isAdultMode || false;
+  
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [productName, setProductName] = useState('');
   const [productPrice, setProductPrice] = useState('');
   const [productLink, setProductLink] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [is18Plus, setIs18Plus] = useState(false);
+  
+  // Si estamos en la bóveda, esto es TRUE por defecto y no se puede cambiar.
+  const [is18Plus, setIs18Plus] = useState(isAdultMode);
 
   // Estados de Clasificación
   const [selectedCategory, setSelectedCategory] = useState<{ id: string, name: string, subcategories: any[] } | null>(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState<any>(null);
   
-  // 👇 NUEVOS ESTADOS DE GPS 👇
+  // Estados de GPS
   const [locationName, setLocationName] = useState('');
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
@@ -77,11 +83,9 @@ export default function UploadScreen({ navigation }: any) {
     player.play();
   });
 
-  // 👇 LÓGICA DEL GPS 👇
   const handleGetLocation = async () => {
     setIsFetchingLocation(true);
     try {
-      // 1. Pedir permiso al usuario
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permiso denegado', 'Para aparecer en el mapa necesitas darnos acceso a tu ubicación.');
@@ -89,18 +93,15 @@ export default function UploadScreen({ navigation }: any) {
         return;
       }
 
-      // 2. Obtener Latitud y Longitud
       let location = await Location.getCurrentPositionAsync({});
       setCoords({ lat: location.coords.latitude, lng: location.coords.longitude });
 
-      // 3. Traducir coordenadas a Ciudad (Geocodificación Inversa)
       let geocode = await Location.reverseGeocodeAsync({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude
       });
 
       if (geocode.length > 0) {
-        // Tomamos la ciudad, o la subregión si la ciudad no está definida (común en Android)
         const city = geocode[0].city || geocode[0].subregion || 'Ubicación Desconocida';
         setLocationName(city);
       } else {
@@ -114,18 +115,18 @@ export default function UploadScreen({ navigation }: any) {
     }
   };
 
+  // 👇 ARREGLO 2: try...catch limpio y validación estricta de nulos 👇
   const handlePublish = async () => {
     if (!videoUri) return;
     if (description.trim() === '') {
       Alert.alert("Falta información", "Por favor, escribe una descripción para tu video.");
       return;
     }
-    if (!selectedCategory || !selectedSubCategory) {
+    if (!selectedCategory?.name || !selectedSubCategory?.id) {
       Alert.alert("Falta Categoría", "Por favor, elige una categoría y sub-categoría para tu producto.");
       return;
     }
-    // 👇 Validación de GPS 👇
-    if (!coords) {
+    if (!coords?.lat || !coords?.lng) {
       Alert.alert("Falta Ubicación", "Toca el botón de ubicación para que los compradores cerca tuyo puedan encontrarte.");
       return;
     }
@@ -144,10 +145,10 @@ export default function UploadScreen({ navigation }: any) {
       formData.append('category', selectedCategory.name);
       formData.append('subCategory', selectedSubCategory.id);
       
-      // Enviamos las coordenadas reales obtenidas por el GPS
       formData.append('latitude', coords.lat.toString());
       formData.append('longitude', coords.lng.toString());
 
+      // Aquí enviamos "true" si estamos en el modo adulto, o "false" si estamos en el normal.
       formData.append('is18Plus', is18Plus.toString());
       
       formData.append('video', {
@@ -165,6 +166,7 @@ export default function UploadScreen({ navigation }: any) {
 
       Alert.alert("¡Éxito!", response.data.message);
       
+      // Limpieza de estados
       setVideoUri(null);
       setDescription('');
       setProductName('');
@@ -175,7 +177,12 @@ export default function UploadScreen({ navigation }: any) {
       setCoords(null);
       setLocationName('');
       
-      navigation.navigate('Inicio'); 
+      // Redirigir según el modo
+      if (isAdultMode) {
+        navigation.navigate('MidnightNavigation', { screen: 'FeedNocturno' }); 
+      } else {
+        navigation.navigate('Inicio'); 
+      }
 
     } catch (error: any) {
       console.error("Error al subir video:", error);
@@ -220,11 +227,24 @@ export default function UploadScreen({ navigation }: any) {
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
       {!videoUri ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="cloud-upload-outline" size={80} color={COLORS.accent} />
-          <Text style={styles.title}>Nuevo Video</Text>
-          <Text style={styles.subtitle}>Sube un producto o servicio a ViralShop</Text>
+          <Ionicons 
+            name={isAdultMode ? "moon" : "cloud-upload-outline"} 
+            size={80} 
+            color={isAdultMode ? "#b829db" : COLORS.accent} 
+          />
+          <Text style={styles.title}>
+            {isAdultMode ? "Video Secreto" : "Nuevo Video"}
+          </Text>
+          <Text style={styles.subtitle}>
+            {isAdultMode 
+              ? "Sube contenido exclusivo a tu Bóveda. No se mostrará en el feed normal." 
+              : "Sube un producto o servicio a ViralShop"}
+          </Text>
           
-          <TouchableOpacity style={styles.uploadButton} onPress={pickVideo}>
+          <TouchableOpacity 
+            style={[styles.uploadButton, isAdultMode && { backgroundColor: '#b829db', shadowColor: '#b829db' }]} 
+            onPress={pickVideo}
+          >
             <Ionicons name="images" size={24} color="#000" style={{ marginRight: 10 }} />
             <Text style={styles.uploadButtonText}>Elegir de la Galería</Text>
           </TouchableOpacity>
@@ -263,7 +283,6 @@ export default function UploadScreen({ navigation }: any) {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <View style={{ width: '48%' }}>
                   <Text style={styles.label}>Ubicación (GPS) *</Text>
-                  {/* 👇 BOTÓN INTELIGENTE DE UBICACIÓN 👇 */}
                   <TouchableOpacity 
                     style={[styles.inputSmall, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: isFetchingLocation ? COLORS.background : COLORS.surface }]}
                     onPress={handleGetLocation}
@@ -306,25 +325,6 @@ export default function UploadScreen({ navigation }: any) {
                   <Ionicons name="chevron-down" size={20} color={COLORS.textMuted} />
                 </TouchableOpacity>
               )}
-
-              {/* 👇 NUEVO SWITCH DE CONTENIDO +18 👇 */}
-              <View style={styles.adultSwitchContainer}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <View style={styles.adultIconWrap}>
-                    <Ionicons name="moon" size={20} color="#b829db" />
-                  </View>
-                  <View style={{ flex: 1, paddingRight: 10 }}>
-                    <Text style={styles.adultSwitchTitle}>ViralShop Midnight (+18)</Text>
-                    <Text style={styles.adultSwitchDesc}>Este contenido se ocultará del feed principal.</Text>
-                  </View>
-                </View>
-                <Switch
-                  value={is18Plus}
-                  onValueChange={setIs18Plus}
-                  trackColor={{ false: '#333', true: '#b829db' }}
-                  thumbColor={'#FFF'}
-                />
-              </View>
               
               <View style={styles.buttonsRow}>
                 <TouchableOpacity style={styles.cancelButton} onPress={() => setVideoUri(null)} disabled={isUploading}>
@@ -421,29 +421,5 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, marginBottom: 15, textAlign: 'center' },
   modalItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#1A0E2A' },
   modalItemText: { color: COLORS.text, fontSize: 16 },
-  modalCloseBtn: { marginTop: 20, padding: 15, alignItems: 'center', backgroundColor: '#333', borderRadius: 10 },
-
-  // 👇 Estilos del Switch Midnight 👇
-  adultSwitchContainer: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    backgroundColor: 'rgba(184, 41, 219, 0.05)', 
-    padding: 15, 
-    borderRadius: 12, 
-    borderWidth: 1, 
-    borderColor: 'rgba(184, 41, 219, 0.3)', 
-    marginTop: 25 
-  },
-  adultIconWrap: { 
-    width: 36, 
-    height: 36, 
-    borderRadius: 18, 
-    backgroundColor: 'rgba(184, 41, 219, 0.15)', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginRight: 12 
-  },
-  adultSwitchTitle: { color: '#b829db', fontSize: 15, fontWeight: 'bold', marginBottom: 2 },
-  adultSwitchDesc: { color: '#AAA', fontSize: 12, lineHeight: 16 },
+  modalCloseBtn: { marginTop: 20, padding: 15, alignItems: 'center', backgroundColor: '#333', borderRadius: 10 }
 });

@@ -28,7 +28,8 @@ import VerifiedUpgradeScreen from './src/screens/VerifiedUpgradeScreen';
 import UploadRemateScreen from './src/screens/UploadRemateScreen';
 import CheckoutScreen from './src/screens/CheckoutScreen';
 import axios from 'axios';
-import AdultFeedScreen from './src/screens/AdultFeedScreen'; // Asegúrate de ajustar la ruta   
+import MidnightNavigation from './src/navigation/MidnightNavigation';
+import AdultPublicProfileScreen from './src/screens/AdultPublicProfileScreen';
 import { CurrencyProvider } from './src/context/CurrencyContext';
 import { COLORS } from './src/theme/colors';
 
@@ -156,7 +157,8 @@ export default function App() {
              <Stack.Screen name="Checkout" component={CheckoutScreen} />
              <Stack.Screen name="Upload" component={UploadScreen} />
              <Stack.Screen name="UploadRemate" component={UploadRemateScreen} />
-             <Stack.Screen name="AdultFeed" component={AdultFeedScreen} />
+             <Stack.Screen name="AdultPublicProfile" component={AdultPublicProfileScreen} />
+             <Stack.Screen name="MidnightNavigation" component={MidnightNavigation} />
            </Stack.Navigator>
           </NavigationContainer>
         </CurrencyProvider>
