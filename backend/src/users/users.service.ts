@@ -225,6 +225,122 @@ export class UsersService {
   }
   
   // ==========================================
+  // 👇 PERFIL PÚBLICO MODO ADULTO 👇
+  // ==========================================
+  async getAdultPublicProfile(targetUserId: string, currentUserId?: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        adultUsername: true,
+        adultAvatarUrl: true,
+        adultBio: true,
+        isVerified: true,
+        lastActive: true,
+        videos: {
+          where: { is18Plus: true }, // 👈 EL MURO: Solo trae videos secretos
+          include: {
+            _count: { select: { likes: true, comments: true } }
+          },
+          orderBy: { createdAt: 'desc' }
+        },
+        _count: {
+          select: { adultFollowers: true, adultFollowing: true }
+        }
+      }
+    });
+
+    if (!user) throw new Error('Usuario no encontrado');
+
+    let isFollowing = false;
+    if (currentUserId) {
+      // 👈 Busca en la tabla secreta de seguidores
+      const follow = await this.prisma.adultFollows.findUnique({
+        where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } }
+      });
+      isFollowing = !!follow;
+    }
+
+    // Cuenta los likes SOLO de los videos +18
+    const adultLikesCount = await this.prisma.like.count({
+      where: { video: { userId: targetUserId, is18Plus: true } }
+    });
+
+    const isOnline = user.lastActive
+      ? (new Date().getTime() - new Date(user.lastActive).getTime()) < 300000
+      : false;
+
+    return {
+      ...user,
+      isOnline,
+      adultFollowersCount: user._count.adultFollowers,
+      adultFollowingCount: user._count.adultFollowing,
+      likesCount: adultLikesCount,
+      isFollowing
+    };
+  }
+
+  // ==========================================
+  // 👇 SEGUIR / DEJAR DE SEGUIR EN MODO ADULTO 👇
+  // ==========================================
+  async toggleAdultFollow(targetUserId: string, currentUserId: string) {
+    if (targetUserId === currentUserId) throw new Error('No puedes seguirte a ti mismo');
+
+    const existingFollow = await this.prisma.adultFollows.findUnique({
+      where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } }
+    });
+
+    if (existingFollow) {
+      await this.prisma.adultFollows.delete({
+        where: { followerId_followingId: { followerId: currentUserId, followingId: targetUserId } }
+      });
+      return { following: false };
+    } else {
+      await this.prisma.adultFollows.create({
+        data: { followerId: currentUserId, followingId: targetUserId }
+      });
+      return { following: true };
+    }
+  }
+
+  // ==========================================
+  // 👇 ACTIVIDAD MODO ADULTO (Para los Modales) 👇
+  // ==========================================
+  async getAdultActivity(userId: string) {
+    const newFollowers = await this.prisma.adultFollows.findMany({
+      where: { followingId: userId },
+      include: { follower: { select: { id: true, adultUsername: true, username: true, adultAvatarUrl: true, isVerified: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const following = await this.prisma.adultFollows.findMany({
+      where: { followerId: userId },
+      include: { following: { select: { id: true, adultUsername: true, username: true, adultAvatarUrl: true, isVerified: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const newLikes = await this.prisma.like.findMany({
+      where: { video: { userId: userId, is18Plus: true } }, // Solo likes en videos ocultos
+      include: {
+        user: { select: { id: true, adultUsername: true, username: true, adultAvatarUrl: true, isVerified: true } },
+        video: { select: { id: true, videoUrl: true, muxAssetId: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const activityList = [
+      ...newFollowers.map(f => ({ id: `adult_follower_${f.followerId}`, type: 'FOLLOW', user: f.follower, createdAt: f.createdAt })),
+      ...following.map(f => ({ id: `adult_following_${f.followingId}`, type: 'FOLLOWING', user: f.following, createdAt: f.createdAt })),
+      ...newLikes.map(l => ({ id: `adult_like_${l.id}`, type: 'LIKE', user: l.user, video: l.video, createdAt: l.createdAt }))
+    ];
+
+    activityList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return activityList;
+  }
+  
+  // ==========================================
   // 👇 NUEVO: Listas de Actividad (Followers, Following, Likes) 👇
   // ==========================================
   async getActivity(userId: string) {

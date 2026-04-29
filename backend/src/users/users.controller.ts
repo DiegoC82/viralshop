@@ -107,4 +107,31 @@ export class UsersController {
     return this.usersService.getActivity(id);
   }
 
+  // ==========================================
+  // 👇 ENDPOINTS DEL MODO ADULTO 👇
+  // ==========================================
+
+  @Get(':id/adult-public')
+  async getAdultPublicProfile(@Param('id') id: string, @Req() req: any) {
+    const currentUserId = req.user?.sub || req.user?.id;
+    return this.usersService.getAdultPublicProfile(id, currentUserId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/adult-follow')
+  async toggleAdultFollow(@Param('id') targetUserId: string, @Req() req: any) {
+    return this.usersService.toggleAdultFollow(targetUserId, req.user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('adult-activity')
+  getAdultActivity(@Request() req: any) {
+    return this.usersService.getAdultActivity(req.user.sub);
+  }
+
+  @Get(':id/adult-activity')
+  getPublicAdultActivity(@Param('id') id: string) {
+    return this.usersService.getAdultActivity(id);
+  }
+
 }

@@ -21,12 +21,12 @@ model User {
   avatarUrl   String?
   bio         String?
   pushToken   String?      // 👈 ¡Agregamos esto para las notificaciones!
+
   // 👇 NUEVOS CAMPOS: Identidad Secreta (+18) 👇
   adultUsername  String?
   adultAvatarUrl String?
   adultBio       String?
-  adultFollowers AdultFollows[] @relation("adultFollowing")
-  adultFollowing AdultFollows[] @relation("adultFollower")
+
   role        UserRole     @default(BUYER)
   isVerified  Boolean      @default(false) // Perfil verificado
   createdAt   DateTime     @default(now())
@@ -45,6 +45,11 @@ model User {
   followers Follows[] @relation("following")
   following Follows[] @relation("follower")
   reportsMade Report[] @relation("UserReports")
+
+  // 👇 NUEVAS RELACIONES: Mundo VIP 👇
+  adultFollowers AdultFollows[]    @relation("adultFollowing")
+  adultFollowing AdultFollows[]    @relation("adultFollower")
+  unlockedVideos UnlockedContent[] @relation("UserUnlocked")
 }
 
 // Para que el usuario elija qué le gusta al iniciar
@@ -85,6 +90,9 @@ model Video {
   auctionEndsAt DateTime?
   isAuctionClosed Boolean   @default(false) // <-- ¡Añadimos esto!
   bids          Bid[]     @relation("VideoBids")
+
+  // 👇 RELACIÓN DE COMPRAS 👇
+  unlockedBy      UnlockedContent[] @relation("VideoUnlocked")
 }
 
 model Like {
@@ -196,4 +204,19 @@ model AdultFollows {
   following   User @relation("adultFollowing", fields: [followingId], references: [id])
   
   @@id([followerId, followingId])
+}
+
+// 👇 TABLA DE DESCARGAS / CONTENIDO DESBLOQUEADO 👇
+model UnlockedContent {
+  id        String   @id @default(cuid())
+  userId    String   
+  videoId   String   
+  pricePaid Float    
+  createdAt DateTime @default(now())
+
+  // 👇 AQUÍ ESTÁ EL ARREGLO: Prisma necesita que el nombre de la relación coincida exacto 👇
+  user      User     @relation("UserUnlocked", fields: [userId], references: [id])
+  video     Video    @relation("VideoUnlocked", fields: [videoId], references: [id])
+
+  @@unique([userId, videoId]) 
 }
