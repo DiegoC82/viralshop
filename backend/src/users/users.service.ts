@@ -339,7 +339,7 @@ export class UsersService {
     activityList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     return activityList;
   }
-  
+
   // ==========================================
   // 👇 NUEVO: Listas de Actividad (Followers, Following, Likes) 👇
   // ==========================================
@@ -402,4 +402,30 @@ export class UsersService {
     );
   });
 }
+ // ==========================================
+  // 👇 NUEVA FUNCIÓN: TRAER LAS DESCARGAS COMPRADAS 👇
+  // ==========================================
+  async getUnlockedContent(userId: string) {
+    const unlockedRecords = await this.prisma.unlockedContent.findMany({
+      where: { userId },
+      include: {
+        video: {
+          include: {
+            user: {
+              select: { 
+                id: true, 
+                username: true, 
+                adultUsername: true, 
+                adultAvatarUrl: true 
+              }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    // Mapeamos para que el frontend reciba directamente la lista de videos
+    return unlockedRecords.map(record => record.video);
+  }
 }

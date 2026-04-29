@@ -134,4 +134,14 @@ export class UsersController {
     return this.usersService.getAdultActivity(id);
   }
 
+  // ==========================================
+  // 👇 AQUÍ VA LA RUTA DE DESCARGAS (ANTES DE LOS :id) 👇
+  // ==========================================
+  @UseGuards(JwtAuthGuard)
+  @Get('unlocked')
+  async getUnlockedContent(@Request() req: any) {
+    const userId = req.user.sub || req.user.id || req.user.userId;
+    return this.usersService.getUnlockedContent(userId);
+  }
+
 }
