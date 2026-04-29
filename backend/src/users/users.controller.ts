@@ -25,6 +25,14 @@ export class UsersController {
     return this.usersService.updateProfile(userId, body.bio, body.isVerified);
   }
 
+  // 👇 NUEVA RUTA: Guarda la Identidad Secreta 👇
+  @UseGuards(JwtAuthGuard)
+  @Patch('adult-profile')
+  async updateAdultProfile(@Request() req: any, @Body() body: { adultBio?: string; adultUsername?: string; adultAvatarUrl?: string }) {
+    const userId = req.user.sub || req.user.id || req.user.userId;
+    return this.usersService.updateAdultProfile(userId, body);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('avatar')
   @UseInterceptors(FileInterceptor('avatar', {

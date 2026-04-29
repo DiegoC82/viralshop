@@ -21,6 +21,10 @@ model User {
   avatarUrl   String?
   bio         String?
   pushToken   String?      // 👈 ¡Agregamos esto para las notificaciones!
+  // 👇 NUEVOS CAMPOS: Identidad Secreta (+18) 👇
+  adultUsername  String?
+  adultAvatarUrl String?
+  adultBio       String?
   role        UserRole     @default(BUYER)
   isVerified  Boolean      @default(false) // Perfil verificado
   createdAt   DateTime     @default(now())

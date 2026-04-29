@@ -169,6 +169,14 @@ export class UsersService {
     });
   }
 
+  // 👇 NUEVA FUNCIÓN: Actualizar el Alter Ego (Bóveda +18) 👇
+  async updateAdultProfile(userId: string, data: { adultBio?: string; adultUsername?: string; adultAvatarUrl?: string }) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data
+    });
+  }
+
   // 👇 FUNCIÓN FALTANTE: Actualiza la última conexión (PUNTO VERDE) 👇
   async updateLastActive(userId: string) {
     return this.prisma.user.update({
